@@ -2,12 +2,15 @@
 <?xml version="1.0" encoding="utf-8"?>
 <shape xmlns:android="http://schemas.android.com/apk/res/android">
 
-    <corners android:radius="3dp"/>
+    <size android:height="3dp" />
+
+    <corners android:radius="3dp" />
 
     <gradient
+        android:type="linear"
         android:angle="0"
         android:startColor="#D7B55B"
         android:centerColor="#8B4DFF"
-        android:endColor="#3488FF"/>
+        android:endColor="#3488FF" />
 
 </shape>
