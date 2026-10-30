@@ -1,25 +1,337 @@
-<?xml version="1.0" encoding="utf-8"?>
-<manifest xmlns:android="http://schemas.android.com/apk/res/android">
+package com.qboix.app;
 
-    <application
-        android:label="Q-BOIX"
-        android:icon="@mipmap/ic_launcher"
-        android:roundIcon="@mipmap/ic_launcher"
-        android:allowBackup="false"
-        android:theme="@android:style/Theme.Black.NoTitleBar.Fullscreen">
+import android.app.Activity;
+import android.content.Context;
+import android.content.Intent;
+import android.content.SharedPreferences;
+import android.graphics.Canvas;
+import android.graphics.Color;
+import android.graphics.LinearGradient;
+import android.graphics.Paint;
+import android.graphics.Path;
+import android.graphics.RadialGradient;
+import android.graphics.Shader;
+import android.graphics.drawable.GradientDrawable;
+import android.os.Bundle;
+import android.text.InputType;
+import android.view.Gravity;
+import android.view.View;
+import android.widget.Button;
+import android.widget.EditText;
+import android.widget.LinearLayout;
+import android.widget.TextView;
 
-        <activity
-            android:name=".LoginActivity"
-            android:exported="true">
-            <intent-filter>
-                <action android:name="android.intent.action.MAIN" />
-                <category android:name="android.intent.category.LAUNCHER" />
-            </intent-filter>
-        </activity>
+import java.nio.charset.StandardCharsets;
+import java.security.MessageDigest;
+import java.security.SecureRandom;
 
-        <activity
-            android:name=".MainActivity"
-            android:exported="false" />
-    </application>
+public class LoginActivity extends Activity {
 
-</manifest>
+    // Account data is kept in this app's private storage only (no cloud)
+    private static final String PREFS = "qboix_account";
+    private static final int MIN_CODE_LENGTH = 4;
+
+    private static final int INK = Color.BLACK;
+    private static final int MUTED = 0xFF6E6E73;
+    private static final int FIELD_BG = 0xFFF2F2F5;
+    private static final int BUTTON_BG = 0xFFF6E3A8;
+    private static final int ERROR = 0xFFC62828;
+
+    private SharedPreferences prefs;
+    private boolean creating;
+    private TextView message;
+    private EditText idBox, codeBox, confirmBox;
+    private Button actionButton;
+
+    @Override
+    protected void onCreate(Bundle savedInstanceState) {
+        super.onCreate(savedInstanceState);
+        prefs = getSharedPreferences(PREFS, MODE_PRIVATE);
+        creating = !prefs.contains("hash");
+        buildScreen();
+    }
+
+    private void buildScreen() {
+        LinearLayout root = new LinearLayout(this);
+        root.setOrientation(LinearLayout.VERTICAL);
+        root.setBackgroundColor(Color.WHITE);
+
+        // Top: sky and runner artwork
+        SkyView sky = new SkyView(this);
+        root.addView(sky, new LinearLayout.LayoutParams(
+                LinearLayout.LayoutParams.MATCH_PARENT, 0, 0.95f));
+
+        // Bottom: white card with rounded top corners, overlapping the sky
+        LinearLayout card = new LinearLayout(this);
+        card.setOrientation(LinearLayout.VERTICAL);
+        card.setGravity(Gravity.CENTER_HORIZONTAL);
+        card.setPadding(dp(28), dp(30), dp(28), dp(24));
+        GradientDrawable cardBg = new GradientDrawable();
+        cardBg.setColor(Color.WHITE);
+        float r = dp(32);
+        cardBg.setCornerRadii(new float[]{r, r, r, r, 0, 0, 0, 0});
+        card.setBackground(cardBg);
+
+        LinearLayout.LayoutParams cardLp = new LinearLayout.LayoutParams(
+                LinearLayout.LayoutParams.MATCH_PARENT, 0, 1.25f);
+        cardLp.setMargins(0, -dp(32), 0, 0);
+        root.addView(card, cardLp);
+
+        TextView kicker = new TextView(this);
+        kicker.setText("RUN.  TRACK.  TRAIN.  IMPROVE.");
+        kicker.setTextColor(MUTED);
+        kicker.setTextSize(10);
+        kicker.setLetterSpacing(0.18f);
+        kicker.setGravity(Gravity.CENTER);
+        card.addView(kicker);
+
+        TextView title = new TextView(this);
+        title.setText("Q-BOIX");
+        title.setTextColor(INK);
+        title.setTextSize(34);
+        title.setTypeface(null, android.graphics.Typeface.BOLD);
+        title.setLetterSpacing(0.08f);
+        title.setGravity(Gravity.CENTER);
+        title.setPadding(0, dp(6), 0, 0);
+        card.addView(title);
+
+        TextView tag = new TextView(this);
+        tag.setText("Desire to Achieve");
+        tag.setTextColor(MUTED);
+        tag.setTextSize(14);
+        tag.setGravity(Gravity.CENTER);
+        tag.setPadding(0, dp(2), 0, dp(26));
+        card.addView(tag);
+
+        idBox = field("Operator ID", false);
+        card.addView(idBox, fieldParams(0));
+
+        codeBox = field("Access code (at least 4 characters)", true);
+        card.addView(codeBox, fieldParams(dp(14)));
+
+        confirmBox = field("Confirm access code", true);
+        confirmBox.setVisibility(creating ? View.VISIBLE : View.GONE);
+        card.addView(confirmBox, fieldParams(dp(14)));
+
+        actionButton = new Button(this);
+        actionButton.setText(creating ? "Create account" : "Sign in");
+        actionButton.setAllCaps(false);
+        actionButton.setTextColor(INK);
+        actionButton.setTextSize(16);
+        actionButton.setTypeface(null, android.graphics.Typeface.BOLD);
+        actionButton.setStateListAnimator(null);
+        GradientDrawable btnBg = new GradientDrawable();
+        btnBg.setColor(BUTTON_BG);
+        btnBg.setCornerRadius(dp(16));
+        actionButton.setBackground(btnBg);
+        LinearLayout.LayoutParams bp = new LinearLayout.LayoutParams(
+                LinearLayout.LayoutParams.MATCH_PARENT, dp(56));
+        bp.setMargins(0, dp(24), 0, 0);
+        actionButton.setLayoutParams(bp);
+        actionButton.setOnClickListener(v -> {
+            if (creating) createAccount(); else signIn();
+        });
+        card.addView(actionButton);
+
+        message = new TextView(this);
+        message.setTextColor(MUTED);
+        message.setTextSize(13);
+        message.setGravity(Gravity.CENTER);
+        message.setPadding(0, dp(18), 0, 0);
+        message.setText(creating
+                ? "Create your operator account. It is stored only on this phone."
+                : "Enter your operator ID and access code.");
+        card.addView(message);
+
+        setContentView(root);
+    }
+
+    private LinearLayout.LayoutParams fieldParams(int topMargin) {
+        LinearLayout.LayoutParams lp = new LinearLayout.LayoutParams(
+                LinearLayout.LayoutParams.MATCH_PARENT,
+                LinearLayout.LayoutParams.WRAP_CONTENT);
+        lp.setMargins(0, topMargin, 0, 0);
+        return lp;
+    }
+
+    private EditText field(String hint, boolean secret) {
+        EditText e = new EditText(this);
+        e.setHint(hint);
+        e.setHintTextColor(0xFF8E8E93);
+        e.setTextColor(INK);
+        e.setTextSize(16);
+        e.setSingleLine(true);
+        e.setPadding(dp(18), dp(16), dp(18), dp(16));
+        GradientDrawable bg = new GradientDrawable();
+        bg.setColor(FIELD_BG);
+        bg.setCornerRadius(dp(16));
+        e.setBackground(bg);   // replaces the default underline, so no lines appear
+        if (secret) {
+            e.setInputType(InputType.TYPE_CLASS_TEXT | InputType.TYPE_TEXT_VARIATION_PASSWORD);
+        } else {
+            e.setInputType(InputType.TYPE_CLASS_TEXT | InputType.TYPE_TEXT_FLAG_CAP_CHARACTERS);
+        }
+        return e;
+    }
+
+    private void createAccount() {
+        String id = idBox.getText().toString().trim().toUpperCase();
+        String code = codeBox.getText().toString();
+        String confirm = confirmBox.getText().toString();
+
+        if (id.isEmpty()) {
+            showError("Enter an operator ID");
+            return;
+        }
+        if (code.length() < MIN_CODE_LENGTH) {
+            showError("Access code must be at least 4 characters");
+            return;
+        }
+        if (!code.equals(confirm)) {
+            showError("Access codes do not match");
+            return;
+        }
+        try {
+            String salt = randomSalt();
+            String hash = hash(salt, code);
+            prefs.edit()
+                    .putString("id", id)
+                    .putString("salt", salt)
+                    .putString("hash", hash)
+                    .apply();
+            openBoot(id, "Account created. Welcome, ");
+        } catch (Exception e) {
+            showError("Could not save the account");
+        }
+    }
+
+    private void signIn() {
+        String id = idBox.getText().toString().trim().toUpperCase();
+        String code = codeBox.getText().toString();
+
+        String savedId = prefs.getString("id", "");
+        String salt = prefs.getString("salt", "");
+        String savedHash = prefs.getString("hash", "");
+
+        if (!id.equals(savedId)) {
+            showError("Unknown operator ID");
+            return;
+        }
+        try {
+            if (hash(salt, code).equals(savedHash)) {
+                openBoot(id, "Access granted. Welcome back, ");
+            } else {
+                showError("Access denied");
+                codeBox.setText("");
+            }
+        } catch (Exception e) {
+            showError("Sign-in failed");
+        }
+    }
+
+    private void openBoot(String id, String text) {
+        message.setTextColor(INK);
+        message.setText(text + id);
+        startActivity(new Intent(this, MainActivity.class));
+        finish();
+    }
+
+    private void showError(String text) {
+        message.setTextColor(ERROR);
+        message.setText(text);
+    }
+
+    private int dp(int v) {
+        return Math.round(v * getResources().getDisplayMetrics().density);
+    }
+
+    private String randomSalt() {
+        byte[] bytes = new byte[16];
+        new SecureRandom().nextBytes(bytes);
+        return toHex(bytes);
+    }
+
+    // SHA-256 of salt and code together. The access code itself is never stored.
+    private String hash(String salt, String code) throws Exception {
+        MessageDigest md = MessageDigest.getInstance("SHA-256");
+        byte[] digest = md.digest((salt + ":" + code).getBytes(StandardCharsets.UTF_8));
+        return toHex(digest);
+    }
+
+    private String toHex(byte[] bytes) {
+        StringBuilder sb = new StringBuilder();
+        for (byte b : bytes) {
+            sb.append(String.format("%02x", b));
+        }
+        return sb.toString();
+    }
+
+    // Draws the sky, sun, running track and runner in code, so no image files are needed
+    static class SkyView extends View {
+        private final Paint skyPaint = new Paint(Paint.ANTI_ALIAS_FLAG);
+        private final Paint sunPaint = new Paint(Paint.ANTI_ALIAS_FLAG);
+        private final Paint trackPaint = new Paint(Paint.ANTI_ALIAS_FLAG);
+        private final Paint lanePaint = new Paint(Paint.ANTI_ALIAS_FLAG);
+        private final Paint runnerPaint = new Paint(Paint.ANTI_ALIAS_FLAG);
+
+        SkyView(Context c) {
+            super(c);
+            trackPaint.setStyle(Paint.Style.STROKE);
+            trackPaint.setStrokeCap(Paint.Cap.ROUND);
+            trackPaint.setColor(0xFFF4A58A);
+            lanePaint.setStyle(Paint.Style.STROKE);
+            lanePaint.setStrokeCap(Paint.Cap.ROUND);
+            lanePaint.setColor(0x99FFFFFF);
+            runnerPaint.setStyle(Paint.Style.STROKE);
+            runnerPaint.setStrokeCap(Paint.Cap.ROUND);
+            runnerPaint.setStrokeJoin(Paint.Join.ROUND);
+            runnerPaint.setColor(0xFF111113);
+        }
+
+        @Override
+        protected void onDraw(Canvas canvas) {
+            float w = getWidth();
+            float h = getHeight();
+            float s = h / 520f;
+
+            // Sky: deep blue at the top, fading to white at the bottom
+            skyPaint.setShader(new LinearGradient(0, 0, 0, h,
+                    new int[]{0xFF2A7FD0, 0xFF7EC4F0, 0xFFFFFFFF},
+                    new float[]{0f, 0.72f, 1f}, Shader.TileMode.CLAMP));
+            canvas.drawRect(0, 0, w, h, skyPaint);
+
+            // Soft sun glow in Q-BOIX gold
+            sunPaint.setShader(new RadialGradient(w * 0.76f, h * 0.26f, w * 0.26f,
+                    new int[]{0xDDFFE4A0, 0x00FFE4A0}, null, Shader.TileMode.CLAMP));
+            canvas.drawRect(0, 0, w, h, sunPaint);
+
+            // Running track curving across the horizon
+            trackPaint.setStrokeWidth(34 * s);
+            Path track = new Path();
+            track.moveTo(-w * 0.1f, h * 0.90f);
+            track.quadTo(w * 0.5f, h * 0.70f, w * 1.1f, h * 0.82f);
+            canvas.drawPath(track, trackPaint);
+
+            // White lane line on the track
+            lanePaint.setStrokeWidth(3 * s);
+            canvas.drawPath(track, lanePaint);
+
+            // Runner silhouette standing on the track
+            float x = w * 0.30f;
+            float y = h * 0.86f;
+            runnerPaint.setStrokeWidth(12 * s);
+            canvas.drawLine(x + 10 * s, y - 120 * s, x - 6 * s, y - 62 * s, runnerPaint);            // torso
+            canvas.drawLine(x + 8 * s, y - 108 * s, x - 18 * s, y - 96 * s, runnerPaint);            // back arm
+            canvas.drawLine(x - 18 * s, y - 96 * s, x - 40 * s, y - 112 * s, runnerPaint);
+            canvas.drawLine(x + 8 * s, y - 108 * s, x + 30 * s, y - 100 * s, runnerPaint);           // front arm
+            canvas.drawLine(x + 30 * s, y - 100 * s, x + 46 * s, y - 128 * s, runnerPaint);
+            canvas.drawLine(x - 6 * s, y - 62 * s, x - 34 * s, y - 34 * s, runnerPaint);             // back leg
+            canvas.drawLine(x - 34 * s, y - 34 * s, x - 56 * s, y - 4 * s, runnerPaint);
+            canvas.drawLine(x - 6 * s, y - 62 * s, x + 24 * s, y - 40 * s, runnerPaint);             // front leg
+            canvas.drawLine(x + 24 * s, y - 40 * s, x + 44 * s, y - 4 * s, runnerPaint);
+
+            runnerPaint.setStyle(Paint.Style.FILL);
+            canvas.drawCircle(x + 14 * s, y - 148 * s, 16 * s, runnerPaint);                         // head
+        }
+    }
+}
