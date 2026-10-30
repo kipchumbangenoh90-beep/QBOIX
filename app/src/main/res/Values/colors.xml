@@ -1,0 +1,9 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <color name="qboix_gold">#D7B55B</color>
+    <color name="qboix_black">#09090D</color>
+    <color name="qboix_graphite">#25252C</color>
+    <color name="qboix_purple">#8B4DFF</color>
+    <color name="qboix_blue">#3488FF</color>
+    <color name="qboix_white">#FFFFFF</color>
+</resources>
