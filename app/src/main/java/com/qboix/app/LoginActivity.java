@@ -1,118 +1,180 @@
+
 package com.qboix.app;
 
 import android.app.Activity;
+import android.app.AlertDialog;
 import android.content.Intent;
 import android.content.SharedPreferences;
-import android.graphics.Color;
+import android.graphics.Typeface;
 import android.os.Bundle;
-import android.webkit.JavascriptInterface;
-import android.webkit.WebSettings;
-import android.webkit.WebView;
-import android.webkit.WebViewClient;
-
-import java.nio.charset.StandardCharsets;
-import java.security.MessageDigest;
-import java.security.SecureRandom;
+import android.text.InputType;
+import android.view.View;
+import android.widget.Button;
+import android.widget.CheckBox;
+import android.widget.EditText;
+import android.widget.TextView;
+import android.widget.Toast;
 
 public class LoginActivity extends Activity {
 
-    // Account data is kept in this app's private storage only (no cloud)
-    private static final String PREFS = "qboix_account";
-    private static final int MIN_CODE_LENGTH = 4;
+    private EditText emailEditText;
+    private EditText passwordEditText;
+    private CheckBox rememberCheckBox;
+    private TextView passwordToggle;
+    private Button signInButton;
 
-    private SharedPreferences prefs;
-    private WebView web;
+    private boolean passwordVisible = false;
+
+    private static final String PREFS = "qboix_login_prefs";
 
     @Override
     protected void onCreate(Bundle savedInstanceState) {
         super.onCreate(savedInstanceState);
-        prefs = getSharedPreferences(PREFS, MODE_PRIVATE);
 
-        web = new WebView(this);
-        web.setBackgroundColor(Color.parseColor("#05060A"));
-        WebSettings s = web.getSettings();
-        s.setJavaScriptEnabled(true);
-        s.setDomStorageEnabled(false);
-        web.setWebViewClient(new WebViewClient());
-        web.addJavascriptInterface(new Bridge(), "Android");
-        web.loadUrl("file:///android_asset/login.html");
-        setContentView(web);
+        setContentView(R.layout.activity_login);
+
+        emailEditText = findViewById(R.id.emailEditText);
+        passwordEditText = findViewById(R.id.passwordEditText);
+        rememberCheckBox = findViewById(R.id.rememberCheckBox);
+        passwordToggle = findViewById(R.id.passwordToggle);
+        signInButton = findViewById(R.id.signInButton);
+
+        loadRememberedOperator();
+
+        passwordToggle.setOnClickListener(v -> togglePassword());
+
+        signInButton.setOnClickListener(v -> login());
+
+        findViewById(R.id.forgotPasswordText)
+                .setOnClickListener(v -> showMessage(
+                        "Password recovery is coming soon."));
+
+        findViewById(R.id.signUpText)
+                .setOnClickListener(v -> showMessage(
+                        "Q-BOIX account registration is coming soon."));
+
+        findViewById(R.id.googleButton)
+                .setOnClickListener(v -> showMessage(
+                        "Google sign-in is not configured yet."));
+
+        findViewById(R.id.appleButton)
+                .setOnClickListener(v -> showMessage(
+                        "Apple sign-in is not configured yet."));
+
+        findViewById(R.id.facebookButton)
+                .setOnClickListener(v -> showMessage(
+                        "Facebook sign-in is not configured yet."));
+
+        findViewById(R.id.quickLoginButton)
+                .setOnClickListener(v -> showMessage(
+                        "Biometric login is coming soon."));
     }
 
-    @Override
-    public void onBackPressed() {
-        if (web.canGoBack()) web.goBack();
-        else super.onBackPressed();
-    }
+    private void loadRememberedOperator() {
+        SharedPreferences prefs =
+                getSharedPreferences(PREFS, MODE_PRIVATE);
 
-    // Methods the HTML page can call
-    public class Bridge {
+        boolean remember =
+                prefs.getBoolean("remember", false);
 
-        @JavascriptInterface
-        public boolean hasAccount() {
-            return prefs.contains("hash");
-        }
+        rememberCheckBox.setChecked(remember);
 
-        @JavascriptInterface
-        public String createAccount(String id, String code) {
-            if (code == null || code.length() < MIN_CODE_LENGTH) {
-                return "Access code must be at least 4 characters";
-            }
-            try {
-                String salt = randomSalt();
-                prefs.edit()
-                        .putString("id", id)
-                        .putString("salt", salt)
-                        .putString("hash", hash(salt, code))
-                        .apply();
-                return "OK";
-            } catch (Exception e) {
-                return "Could not save the account";
-            }
-        }
-
-        @JavascriptInterface
-        public String signIn(String id, String code) {
-            String savedId = prefs.getString("id", "");
-            String salt = prefs.getString("salt", "");
-            String savedHash = prefs.getString("hash", "");
-            if (!id.equals(savedId)) {
-                return "Unknown operator ID";
-            }
-            try {
-                return hash(salt, code).equals(savedHash) ? "OK" : "Access denied";
-            } catch (Exception e) {
-                return "Sign-in failed";
-            }
-        }
-
-        @JavascriptInterface
-        public void openBoot() {
-            runOnUiThread(() -> {
-                startActivity(new Intent(LoginActivity.this, MainActivity.class));
-                finish();
-            });
+        if (remember) {
+            emailEditText.setText(
+                    prefs.getString("operator", ""));
         }
     }
 
-    private String randomSalt() {
-        byte[] bytes = new byte[16];
-        new SecureRandom().nextBytes(bytes);
-        return toHex(bytes);
-    }
+    private void togglePassword() {
 
-    // SHA-256 of salt and code together. The access code itself is never stored.
-    private String hash(String salt, String code) throws Exception {
-        MessageDigest md = MessageDigest.getInstance("SHA-256");
-        byte[] digest = md.digest((salt + ":" + code).getBytes(StandardCharsets.UTF_8));
-        return toHex(digest);
-    }
+        int cursor = passwordEditText.getSelectionStart();
 
-    private String toHex(byte[] bytes) {
-        StringBuilder sb = new StringBuilder();
-        for (byte b : bytes) {
-            sb.append(String.format("%02x", b));
+        if (passwordVisible) {
+
+            passwordEditText.setInputType(
+                    InputType.TYPE_CLASS_TEXT |
+                    InputType.TYPE_TEXT_VARIATION_PASSWORD);
+
+            passwordToggle.setText("SHOW");
+
+            passwordVisible = false;
+
+        } else {
+
+            passwordEditText.setInputType(
+                    InputType.TYPE_CLASS_TEXT |
+                    InputType.TYPE_TEXT_VARIATION_VISIBLE_PASSWORD);
+
+            passwordToggle.setText("HIDE");
+
+            passwordVisible = true;
         }
-        return sb.toString();
+
+        passwordEditText.setTypeface(Typeface.DEFAULT);
+
+        passwordEditText.setSelection(
+                Math.max(0, cursor));
+    }
+
+    private void login() {
+
+        String operator =
+                emailEditText.getText().toString().trim();
+
+        String password =
+                passwordEditText.getText().toString();
+
+        if (operator.isEmpty()) {
+            emailEditText.setError(
+                    "Enter your email or phone number");
+            emailEditText.requestFocus();
+            return;
+        }
+
+        if (password.isEmpty()) {
+            passwordEditText.setError(
+                    "Enter your password");
+            passwordEditText.requestFocus();
+            return;
+        }
+
+        if (password.length() < 4) {
+            passwordEditText.setError(
+                    "Minimum 4 characters required");
+            passwordEditText.requestFocus();
+            return;
+        }
+
+        SharedPreferences.Editor editor =
+                getSharedPreferences(PREFS, MODE_PRIVATE).edit();
+
+        editor.putBoolean(
+                "remember", rememberCheckBox.isChecked());
+
+        if (rememberCheckBox.isChecked()) {
+            editor.putString("operator", operator);
+        } else {
+            editor.remove("operator");
+        }
+
+        editor.apply();
+
+        Toast.makeText(
+                this,
+                "Login details accepted.",
+                Toast.LENGTH_SHORT
+        ).show();
+
+        // DEMO ONLY: connect real authentication before release.
+        startActivity(
+                new Intent(LoginActivity.this, MainActivity.class));
+    }
+
+    private void showMessage(String message) {
+        new AlertDialog.Builder(this)
+                .setTitle("Q-BOIX")
+                .setMessage(message)
+                .setPositiveButton("OK", null)
+                .show();
     }
 }
