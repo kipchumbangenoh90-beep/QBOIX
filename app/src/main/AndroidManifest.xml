@@ -1,19 +1,19 @@
 <?xml version="1.0" encoding="utf-8"?>
 <manifest xmlns:android="http://schemas.android.com/apk/res/android">
 
+    <uses-permission android:name="android.permission.INTERNET" />
+
     <application
         android:label="Q-BOIX"
         android:icon="@mipmap/ic_launcher"
         android:roundIcon="@mipmap/ic_launcher"
         android:allowBackup="false"
+        android:usesCleartextTraffic="false"
         android:theme="@android:style/Theme.Black.NoTitleBar.Fullscreen">
 
+        <!-- Startup videos -->
         <activity
-            android:name=".RegisterActivity"
-            android:exported="false" />
-
-        <activity
-            android:name=".LoginActivity"
+            android:name=".MainActivity"
             android:exported="true">
 
             <intent-filter>
@@ -23,9 +23,21 @@
 
         </activity>
 
+        <!-- Login -->
         <activity
-            android:name=".MainActivity"
+            android:name=".LoginActivity"
+            android:exported="false" />
+
+        <!-- Registration -->
+        <activity
+            android:name=".RegisterActivity"
+            android:exported="false" />
+
+        <!-- Athlete dashboard -->
+        <activity
+            android:name=".DashboardActivity"
             android:exported="false" />
 
     </application>
+
 </manifest>
