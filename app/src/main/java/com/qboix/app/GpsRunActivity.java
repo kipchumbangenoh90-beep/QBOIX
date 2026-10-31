@@ -50,7 +50,7 @@ public class GpsRunActivity extends Activity {
 
     @Override public void onCreate(Bundle b){super.onCreate(b);activityType=getIntent().getStringExtra("activity_type");if(activityType==null)activityType="RUN";buildScreen();}
     private void buildScreen(){
-        FrameLayout root=new FrameLayout(this); root.setBackgroundColor(Color.TRANSPARENT);
+        FrameLayout root=new FrameLayout(this); root.setBackgroundColor(Color.rgb(35,36,43));
         LinearLayout base=new LinearLayout(this);base.setOrientation(LinearLayout.VERTICAL);base.setBackgroundColor(Color.TRANSPARENT);
         LinearLayout header=new LinearLayout(this);header.setGravity(Gravity.CENTER_VERTICAL);header.setPadding(dp(16),dp(8),dp(16),dp(8));
         TextView brand=label("Q-BOIX",GOLD,20,true);header.addView(brand,new LinearLayout.LayoutParams(0,-2,1));
