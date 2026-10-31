@@ -2,6 +2,7 @@
 package com.qboix.app;
 
 import android.content.Context;
+import android.util.AtomicFile;
 import org.json.JSONArray;
 import org.json.JSONException;
 import org.json.JSONObject;
@@ -42,14 +43,15 @@ public final class WorkoutStore {
  private static void write(Context c,String name,JSONArray data){
   File folder=userFolder(c);
   if(folder==null)return;
-  File file=new File(folder,name);
-  File temp=new File(folder,name+".tmp");
-  try(FileOutputStream output=new FileOutputStream(temp)){
+  AtomicFile file=new AtomicFile(new File(folder,name));
+  FileOutputStream output=null;
+  try{
+   output=file.startWrite();
    output.write(data.toString().getBytes(StandardCharsets.UTF_8));
-   output.flush();
-   if(file.exists()&&!file.delete())return;
-   if(!temp.renameTo(file))temp.delete();
-  }catch(IOException ignored){temp.delete();}
+   file.finishWrite(output);
+  }catch(IOException ignored){
+   if(output!=null)file.failWrite(output);
+  }
  }
  public static String getPrivateFolderTitle(FirebaseUser user){
   if(user==null)return "Sign in to open your private folder";
