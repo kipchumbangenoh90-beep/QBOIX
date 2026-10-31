@@ -247,9 +247,9 @@ public class DashboardActivity extends Activity {
         hp.bottomMargin = dp(18);
         mainLayout.addView(hero,hp);
 
-        addActivityMode(R.drawable.ic_mode_run, R.drawable.bg_mode_run, "RUN", "Track your run with GPS", () -> startGpsActivity("RUN"));
-        addActivityMode(R.drawable.ic_mode_jog, R.drawable.bg_mode_jog, "JOG", "Build rhythm and endurance", () -> startGpsActivity("JOG"));
-        addActivityMode(R.drawable.ic_mode_walk, R.drawable.bg_mode_walk, "WALK", "Record a relaxed walk", () -> startGpsActivity("WALK"));
+        addActivityMode(R.drawable.ic_mode_run, R.drawable.qboix_home_run, "RUN", "Track your run with GPS", () -> startGpsActivity("RUN"));
+        addActivityMode(R.drawable.ic_mode_jog, R.drawable.qboix_home_jog, "JOG", "Build rhythm and endurance", () -> startGpsActivity("JOG"));
+        addActivityMode(R.drawable.ic_mode_walk, R.drawable.qboix_home_walk, "WALK", "Record a relaxed walk", () -> startGpsActivity("WALK"));
         addSpace(18);
         addText("YOUR PERFORMANCE", GOLD, 12, true);
         addSpace(9);
@@ -650,10 +650,10 @@ public class DashboardActivity extends Activity {
         card.setOrientation(LinearLayout.VERTICAL);
         card.setGravity(Gravity.CENTER_VERTICAL);
         card.setPadding(dp(13), dp(17), dp(13), dp(17));
-        card.setBackground(background(CARD, 13));
+        card.setBackgroundColor(Color.TRANSPARENT);
 
-        TextView number = text(value, GOLD, 19, true);
-        TextView title = text(label, GREY, 10, true);
+        TextView number = text(value, BLUE, 19, true);
+        TextView title = text(label, GREEN, 10, true);
 
         card.addView(number);
 
