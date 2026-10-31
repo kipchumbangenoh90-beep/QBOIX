@@ -14,6 +14,7 @@
   <activity android:name=".DashboardActivity" android:exported="false"/>
   <activity android:name=".FartlekActivity" android:exported="false"/>
   <activity android:name=".WorkoutHistoryActivity" android:exported="false"/>
+  <activity android:name=".PerformanceAnalyticsActivity" android:exported="false"/>
   <activity android:name=".GpsRunActivity" android:exported="false"/>
   <service android:name=".GpsTrackingService" android:exported="false" android:foregroundServiceType="location"/>
  </application>
