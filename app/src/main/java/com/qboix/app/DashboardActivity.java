@@ -12,8 +12,6 @@ import android.widget.LinearLayout;
 import android.widget.ScrollView;
 import android.widget.TextView;
 
-import com.google.firebase.auth.FirebaseAuth;
-import com.google.firebase.auth.FirebaseUser;
 
 public class DashboardActivity extends Activity {
 
@@ -28,7 +26,6 @@ public class DashboardActivity extends Activity {
     private LinearLayout mainLayout;
     private LinearLayout navigation;
     private String currentPage = "Home";
-    private FirebaseAuth auth;
 
     private final String[] tabs = {
             "Home", "Activities", "Training",
@@ -43,12 +40,7 @@ public class DashboardActivity extends Activity {
     protected void onCreate(Bundle savedInstanceState) {
         super.onCreate(savedInstanceState);
 
-        auth = FirebaseAuth.getInstance();
-
-        FirebaseUser user = auth.getCurrentUser();
-
-        if (user == null || !user.isEmailVerified()) {
-            auth.signOut();
+        if (!LocalAccountStore.isSignedIn(this)) {
             openLogin();
             return;
         }
@@ -193,14 +185,7 @@ public class DashboardActivity extends Activity {
 
     private void showHome() {
 
-        FirebaseUser user = auth.getCurrentUser();
-
-        String name = "Athlete";
-
-        if (user != null && user.getDisplayName() != null
-                && !user.getDisplayName().trim().isEmpty()) {
-            name = user.getDisplayName();
-        }
+        String name = LocalAccountStore.getName(this);
 
         addText("Q-BOIX", GOLD, 29, true);
         addText("DESIRE TO ACHIEVE", GREY, 10, true);
@@ -471,19 +456,10 @@ public class DashboardActivity extends Activity {
 
     private void showProfile() {
 
-        FirebaseUser user = auth.getCurrentUser();
-
         pageHeading("ATHLETE PROFILE");
 
-        String name = user != null
-                && user.getDisplayName() != null
-                ? user.getDisplayName()
-                : "Athlete";
-
-        String email = user != null
-                && user.getEmail() != null
-                ? user.getEmail()
-                : "No email";
+        String name = LocalAccountStore.getName(this);
+        String email = LocalAccountStore.getEmail(this);
 
         addText(name, WHITE, 25, true);
         addText(email, GREY, 13, false);
@@ -492,7 +468,7 @@ public class DashboardActivity extends Activity {
 
         addSimpleCard(
                 "ACCOUNT STATUS",
-                "Email verified"
+                "Local account on this phone"
         );
 
         addActionCard(
@@ -820,7 +796,7 @@ public class DashboardActivity extends Activity {
                 .setMessage("Are you sure you want to log out?")
                 .setNegativeButton("Cancel", null)
                 .setPositiveButton("Log Out", (dialog, which) -> {
-                    auth.signOut();
+                    LocalAccountStore.signOut(this);
                     openLogin();
                 })
                 .show();
