@@ -247,9 +247,9 @@ public class DashboardActivity extends Activity {
         hp.bottomMargin = dp(18);
         mainLayout.addView(hero,hp);
 
-        addActivityMode(R.drawable.ic_mode_run, R.drawable.bg_mode_run, "RUN", "Track your run with GPS", () -> startActivity(new Intent(DashboardActivity.this, GpsRunActivity.class)));
-        addActivityMode(R.drawable.ic_mode_jog, R.drawable.bg_mode_jog, "JOG", "Build rhythm and endurance", () -> startActivity(new Intent(DashboardActivity.this, GpsRunActivity.class)));
-        addActivityMode(R.drawable.ic_mode_walk, R.drawable.bg_mode_walk, "WALK", "Record a relaxed walk", () -> startActivity(new Intent(DashboardActivity.this, GpsRunActivity.class)));
+        addActivityMode(R.drawable.ic_mode_run, R.drawable.bg_mode_run, "RUN", "Track your run with GPS", () -> startGpsActivity("RUN"));
+        addActivityMode(R.drawable.ic_mode_jog, R.drawable.bg_mode_jog, "JOG", "Build rhythm and endurance", () -> startGpsActivity("JOG"));
+        addActivityMode(R.drawable.ic_mode_walk, R.drawable.bg_mode_walk, "WALK", "Record a relaxed walk", () -> startGpsActivity("WALK"));
         addSpace(18);
         addText("YOUR PERFORMANCE", GOLD, 12, true);
         addSpace(9);
@@ -267,7 +267,7 @@ public class DashboardActivity extends Activity {
         addText("Welcome, " + name, GREY, 12, false);
     }
 
-    private void addActivityMode(int iconRes, int sceneRes, String title, String subtitle, Runnable action) {
+    private void startGpsActivity(String activityType) {\n        Intent intent = new Intent(DashboardActivity.this, GpsRunActivity.class);\n        intent.putExtra("activity_type", activityType);\n        startActivity(intent);\n    }\n\n    private void addActivityMode(int iconRes, int sceneRes, String title, String subtitle, Runnable action) {
         FrameLayout card = new FrameLayout(this);
 
         GradientDrawable cardShape = background(Color.rgb(12, 18, 27), 22);
