@@ -47,7 +47,7 @@ public class DashboardActivity extends Activity {
 
         FirebaseUser user = auth.getCurrentUser();
 
-        if (user == null || !user.isEmailVerified()) {
+        if (user == null) {
             auth.signOut();
             openLogin();
             return;
@@ -491,8 +491,8 @@ public class DashboardActivity extends Activity {
         addSpace(20);
 
         addSimpleCard(
-                "ACCOUNT STATUS",
-                "Email verified"
+                "PERSONAL DATA",
+                WorkoutStore.getPrivateFolderTitle(user)
         );
 
         addActionCard(
