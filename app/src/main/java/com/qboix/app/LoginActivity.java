@@ -1,4 +1,3 @@
-
 package com.qboix.app;
 
 import android.app.Activity;
@@ -8,12 +7,15 @@ import android.content.SharedPreferences;
 import android.graphics.Typeface;
 import android.os.Bundle;
 import android.text.InputType;
-import android.view.View;
+import android.util.Patterns;
 import android.widget.Button;
 import android.widget.CheckBox;
 import android.widget.EditText;
 import android.widget.TextView;
 import android.widget.Toast;
+
+import com.google.firebase.auth.FirebaseAuth;
+import com.google.firebase.auth.FirebaseUser;
 
 public class LoginActivity extends Activity {
 
@@ -23,6 +25,7 @@ public class LoginActivity extends Activity {
     private TextView passwordToggle;
     private Button signInButton;
 
+    private FirebaseAuth auth;
     private boolean passwordVisible = false;
 
     private static final String PREFS = "qboix_login_prefs";
@@ -32,6 +35,8 @@ public class LoginActivity extends Activity {
         super.onCreate(savedInstanceState);
 
         setContentView(R.layout.activity_login);
+
+        auth = FirebaseAuth.getInstance();
 
         emailEditText = findViewById(R.id.emailEditText);
         passwordEditText = findViewById(R.id.passwordEditText);
@@ -46,16 +51,18 @@ public class LoginActivity extends Activity {
         signInButton.setOnClickListener(v -> login());
 
         findViewById(R.id.forgotPasswordText)
-                .setOnClickListener(v -> showMessage(
-                        "Password recovery is coming soon."));
+                .setOnClickListener(v -> showPasswordResetDialog());
 
         findViewById(R.id.signUpText)
-                .setOnClickListener(v -> showMessage(
-                        "Q-BOIX account registration is coming soon."));
+                .setOnClickListener(v -> {
+                    startActivity(new Intent(
+                            LoginActivity.this,
+                            RegisterActivity.class));
+                });
 
         findViewById(R.id.googleButton)
                 .setOnClickListener(v -> showMessage(
-                        "Google sign-in is not configured yet."));
+                        "Google sign-in will be connected next."));
 
         findViewById(R.id.appleButton)
                 .setOnClickListener(v -> showMessage(
@@ -67,10 +74,26 @@ public class LoginActivity extends Activity {
 
         findViewById(R.id.quickLoginButton)
                 .setOnClickListener(v -> showMessage(
-                        "Biometric login is coming soon."));
+                        "Biometric login will be configured later."));
+    }
+
+    @Override
+    protected void onStart() {
+        super.onStart();
+
+        FirebaseUser user = auth.getCurrentUser();
+
+        if (user != null) {
+            if (user.isEmailVerified()) {
+                openMainActivity();
+            } else {
+                auth.signOut();
+            }
+        }
     }
 
     private void loadRememberedOperator() {
+
         SharedPreferences prefs =
                 getSharedPreferences(PREFS, MODE_PRIVATE);
 
@@ -96,7 +119,6 @@ public class LoginActivity extends Activity {
                     InputType.TYPE_TEXT_VARIATION_PASSWORD);
 
             passwordToggle.setText("SHOW");
-
             passwordVisible = false;
 
         } else {
@@ -106,7 +128,6 @@ public class LoginActivity extends Activity {
                     InputType.TYPE_TEXT_VARIATION_VISIBLE_PASSWORD);
 
             passwordToggle.setText("HIDE");
-
             passwordVisible = true;
         }
 
@@ -118,32 +139,74 @@ public class LoginActivity extends Activity {
 
     private void login() {
 
-        String operator =
+        String email =
                 emailEditText.getText().toString().trim();
 
         String password =
                 passwordEditText.getText().toString();
 
-        if (operator.isEmpty()) {
-            emailEditText.setError(
-                    "Enter your email or phone number");
+        if (!Patterns.EMAIL_ADDRESS.matcher(email).matches()) {
+            emailEditText.setError("Enter a valid email address");
             emailEditText.requestFocus();
             return;
         }
 
         if (password.isEmpty()) {
-            passwordEditText.setError(
-                    "Enter your password");
+            passwordEditText.setError("Enter your password");
             passwordEditText.requestFocus();
             return;
         }
 
-        if (password.length() < 4) {
-            passwordEditText.setError(
-                    "Minimum 4 characters required");
-            passwordEditText.requestFocus();
-            return;
-        }
+        signInButton.setEnabled(false);
+        signInButton.setText("Signing in...");
+
+        auth.signInWithEmailAndPassword(email, password)
+                .addOnCompleteListener(this, task -> {
+
+                    signInButton.setEnabled(true);
+                    signInButton.setText("Log In   →");
+
+                    if (task.isSuccessful()) {
+
+                        FirebaseUser user = auth.getCurrentUser();
+
+                        if (user != null && user.isEmailVerified()) {
+
+                            saveRememberedOperator(email);
+                            Toast.makeText(this,
+                                    "Welcome to Q-BOIX!",
+                                    Toast.LENGTH_SHORT).show();
+
+                            openMainActivity();
+
+                        } else {
+
+                            auth.signOut();
+
+                            new AlertDialog.Builder(this)
+                                    .setTitle("Verify your email")
+                                    .setMessage(
+                                            "Please verify your email address using the link sent to your inbox before logging in.")
+                                    .setPositiveButton("OK", null)
+                                    .show();
+                        }
+
+                    } else {
+
+                        String message = task.getException() != null
+                                ? task.getException().getMessage()
+                                : "Login failed. Please try again.";
+
+                        new AlertDialog.Builder(this)
+                                .setTitle("Login unsuccessful")
+                                .setMessage(message)
+                                .setPositiveButton("OK", null)
+                                .show();
+                    }
+                });
+    }
+
+    private void saveRememberedOperator(String email) {
 
         SharedPreferences.Editor editor =
                 getSharedPreferences(PREFS, MODE_PRIVATE).edit();
@@ -152,25 +215,75 @@ public class LoginActivity extends Activity {
                 "remember", rememberCheckBox.isChecked());
 
         if (rememberCheckBox.isChecked()) {
-            editor.putString("operator", operator);
+            editor.putString("operator", email);
         } else {
             editor.remove("operator");
         }
 
         editor.apply();
+    }
 
-        Toast.makeText(
-                this,
-                "Login details accepted.",
-                Toast.LENGTH_SHORT
-        ).show();
+    private void showPasswordResetDialog() {
 
-        // DEMO ONLY: connect real authentication before release.
-        startActivity(
-                new Intent(LoginActivity.this, MainActivity.class));
+        EditText emailInput = new EditText(this);
+
+        emailInput.setInputType(
+                InputType.TYPE_CLASS_TEXT |
+                InputType.TYPE_TEXT_VARIATION_EMAIL_ADDRESS);
+
+        emailInput.setHint("Enter your registered email");
+
+        String currentEmail =
+                emailEditText.getText().toString().trim();
+
+        emailInput.setText(currentEmail);
+
+        new AlertDialog.Builder(this)
+                .setTitle("Reset Password")
+                .setMessage("We'll send a password reset link to your email.")
+                .setView(emailInput)
+                .setNegativeButton("Cancel", null)
+                .setPositiveButton("Send Link", (dialog, which) -> {
+
+                    String email =
+                            emailInput.getText().toString().trim();
+
+                    if (!Patterns.EMAIL_ADDRESS.matcher(email).matches()) {
+                        showMessage("Please enter a valid email address.");
+                        return;
+                    }
+
+                    auth.sendPasswordResetEmail(email)
+                            .addOnCompleteListener(task -> {
+
+                                if (task.isSuccessful()) {
+                                    showMessage(
+                                            "If an account exists for this email, a password reset link has been sent.");
+                                } else {
+                                    showMessage(
+                                            "Unable to send reset email. Please try again.");
+                                }
+                            });
+                })
+                .show();
+    }
+
+    private void openMainActivity() {
+
+        Intent intent = new Intent(
+                LoginActivity.this,
+                MainActivity.class);
+
+        intent.setFlags(
+                Intent.FLAG_ACTIVITY_NEW_TASK |
+                Intent.FLAG_ACTIVITY_CLEAR_TASK);
+
+        startActivity(intent);
+        finish();
     }
 
     private void showMessage(String message) {
+
         new AlertDialog.Builder(this)
                 .setTitle("Q-BOIX")
                 .setMessage(message)
