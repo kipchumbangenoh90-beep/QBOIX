@@ -360,11 +360,11 @@ public class DashboardActivity extends Activity {
 
         addActionCard(
                 "RUNNING REPORTS",
-                "Review your detailed performance reports",
+                "Create, download and share branded Q-BOIX PDF reports",
                 GOLD,
-                () -> showMessage(
-                        "Running reports will be developed in the reporting phase."
-                )
+                () -> startActivity(new Intent(
+                        DashboardActivity.this, WorkoutReportsActivity.class
+                ))
         );
 
         addActionCard(
