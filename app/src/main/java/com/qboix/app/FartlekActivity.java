@@ -33,7 +33,7 @@ public class FartlekActivity extends Activity {
     private final int GREY = Color.rgb(165,165,175);
     private final Handler handler = new Handler(Looper.getMainLooper());
 
-    private EditText sprintInput, recoveryInput, repetitionsInput;
+    private EditText sprintMinutesInput, sprintSecondsInput, recoveryMinutesInput, recoverySecondsInput, repetitionsInput;
     private TextView phaseText, timerText, progressText, elapsedText;
     private Button startButton, pauseButton, stopButton;
     private int sprintSeconds, recoverySeconds, targetRepetitions;
@@ -98,32 +98,55 @@ public class FartlekActivity extends Activity {
         hp.topMargin=dp(18); root.addView(heading,hp);
         root.addView(label("Set your fast and easy running intervals.",GREY,13,false));
 
-        LinearLayout fields = new LinearLayout(this);
-        fields.setOrientation(LinearLayout.HORIZONTAL);
-        fields.setPadding(0,dp(20),0,dp(8));
-        sprintInput = numberField("Sprint seconds","45");
-        recoveryInput = numberField("Jog seconds","15");
-        fields.addView(sprintInput,new LinearLayout.LayoutParams(0,dp(58),1));
-        fields.addView(spaceWidth(10));
-        fields.addView(recoveryInput,new LinearLayout.LayoutParams(0,dp(58),1));
-        root.addView(fields);
+        TextView ratioLabel = label("DEFAULT RATIO 3:1 • EDIT BOTH INTERVALS", GOLD, 12, true);
+        LinearLayout.LayoutParams ratioParams = new LinearLayout.LayoutParams(-1,-2);
+        ratioParams.topMargin = dp(18);
+        root.addView(ratioLabel, ratioParams);
 
-        repetitionsInput = numberField("Repeats","8");
-        root.addView(repetitionsInput,new LinearLayout.LayoutParams(-1,dp(58)));
+        TextView sprintLabel = label("SPRINT DURATION", WHITE, 12, true);
+        LinearLayout.LayoutParams slp = new LinearLayout.LayoutParams(-1,-2);
+        slp.topMargin = dp(10);
+        root.addView(sprintLabel, slp);
+        LinearLayout sprintFields = new LinearLayout(this);
+        sprintFields.setOrientation(LinearLayout.HORIZONTAL);
+        sprintMinutesInput = numberField("Minutes","3");
+        sprintSecondsInput = numberField("Seconds","0");
+        sprintFields.addView(sprintMinutesInput,new LinearLayout.LayoutParams(0,dp(52),1));
+        sprintFields.addView(spaceWidth(10));
+        sprintFields.addView(sprintSecondsInput,new LinearLayout.LayoutParams(0,dp(52),1));
+        root.addView(sprintFields);
+
+        TextView recoveryLabel = label("RECOVERY JOG DURATION", WHITE, 12, true);
+        LinearLayout.LayoutParams rlp = new LinearLayout.LayoutParams(-1,-2);
+        rlp.topMargin = dp(10);
+        root.addView(recoveryLabel, rlp);
+        LinearLayout recoveryFields = new LinearLayout(this);
+        recoveryFields.setOrientation(LinearLayout.HORIZONTAL);
+        recoveryMinutesInput = numberField("Minutes","1");
+        recoverySecondsInput = numberField("Seconds","0");
+        recoveryFields.addView(recoveryMinutesInput,new LinearLayout.LayoutParams(0,dp(52),1));
+        recoveryFields.addView(spaceWidth(10));
+        recoveryFields.addView(recoverySecondsInput,new LinearLayout.LayoutParams(0,dp(52),1));
+        root.addView(recoveryFields);
+
+        repetitionsInput = numberField("Number of repetitions","8");
+        LinearLayout.LayoutParams repParams = new LinearLayout.LayoutParams(-1,dp(52));
+        repParams.topMargin = dp(10);
+        root.addView(repetitionsInput,repParams);
 
         LinearLayout display = new LinearLayout(this);
         display.setOrientation(LinearLayout.VERTICAL);
         display.setGravity(Gravity.CENTER);
         display.setPadding(dp(18),dp(28),dp(18),dp(28));
         display.setBackground(panel());
-        LinearLayout.LayoutParams dp = new LinearLayout.LayoutParams(-1,0,1);
-        dp.topMargin=dp(22); dp.bottomMargin=dp(18);
-        root.addView(display,dp);
+        LinearLayout.LayoutParams displayParams = new LinearLayout.LayoutParams(-1,0,1);
+        displayParams.topMargin=dp(14); displayParams.bottomMargin=dp(12);
+        root.addView(display,displayParams);
 
         phaseText = label("READY",GOLD,18,true);
         phaseText.setGravity(Gravity.CENTER);
         display.addView(phaseText);
-        timerText = label("00:45",WHITE,56,true);
+        timerText = label("03:00",WHITE,56,true);
         timerText.setGravity(Gravity.CENTER);
         display.addView(timerText);
         progressText = label("0 / 8 intervals",GREY,14,false);
@@ -205,20 +228,25 @@ public class FartlekActivity extends Activity {
         }
         if (running) return;
         try {
-            sprintSeconds=Integer.parseInt(sprintInput.getText().toString().trim());
-            recoverySeconds=Integer.parseInt(recoveryInput.getText().toString().trim());
+            int sprintMinutes=Integer.parseInt(sprintMinutesInput.getText().toString().trim());
+            int sprintRemainder=Integer.parseInt(sprintSecondsInput.getText().toString().trim());
+            int recoveryMinutes=Integer.parseInt(recoveryMinutesInput.getText().toString().trim());
+            int recoveryRemainder=Integer.parseInt(recoverySecondsInput.getText().toString().trim());
+            if(sprintRemainder>59||recoveryRemainder>59) throw new IllegalArgumentException();
+            sprintSeconds=sprintMinutes*60+sprintRemainder;
+            recoverySeconds=recoveryMinutes*60+recoveryRemainder;
             targetRepetitions=Integer.parseInt(repetitionsInput.getText().toString().trim());
         } catch(Exception e) {
-            Toast.makeText(this,"Enter valid numbers for all fields.",Toast.LENGTH_SHORT).show();
+            Toast.makeText(this,"Enter valid minutes, seconds and repetitions. Seconds must be 0–59.",Toast.LENGTH_SHORT).show();
             return;
         }
-        if(sprintSeconds<1||sprintSeconds>3600||recoverySeconds<1||recoverySeconds>3600||targetRepetitions<1||targetRepetitions>100) {
-            Toast.makeText(this,"Use 1–3600 seconds and 1–100 repetitions.",Toast.LENGTH_LONG).show();
+        if(sprintSeconds<1||sprintSeconds>21600||recoverySeconds<1||recoverySeconds>21600||targetRepetitions<1||targetRepetitions>100) {
+            Toast.makeText(this,"Each interval must be 1 second to 6 hours; repetitions 1–100.",Toast.LENGTH_LONG).show();
             return;
         }
         completedRepetitions=0; elapsedSeconds=0; recoveryPhase=false;
         remainingSeconds=sprintSeconds; running=true; paused=false;
-        sprintInput.setEnabled(false); recoveryInput.setEnabled(false); repetitionsInput.setEnabled(false);
+        setIntervalInputsEnabled(false);
         phaseText.setText("SPRINT • RUN FAST");
         startButton.setText("WORKOUT RUNNING");
         handler.postDelayed(ticker,1000);
@@ -243,7 +271,7 @@ public class FartlekActivity extends Activity {
     private void resetWorkout() {
         handler.removeCallbacks(ticker);
         running=false; paused=false; completedRepetitions=0; elapsedSeconds=0;
-        sprintInput.setEnabled(true); recoveryInput.setEnabled(true); repetitionsInput.setEnabled(true);
+        setIntervalInputsEnabled(true);
         phaseText.setText("READY"); startButton.setText("START WORKOUT");
         updateDisplay();
     }
@@ -278,7 +306,7 @@ public class FartlekActivity extends Activity {
 
     private void updateDisplay() {
         if(!running && completedRepetitions==0) {
-            int s=readPreview(sprintInput,45);
+            int s=readPreview(sprintMinutesInput,3)*60+readPreview(sprintSecondsInput,0);
             timerText.setText(formatTime(s));
             progressText.setText("0 / "+safePreviewReps()+" intervals");
             elapsedText.setText("Elapsed "+formatTime(elapsedSeconds));
@@ -294,6 +322,13 @@ public class FartlekActivity extends Activity {
         catch(Exception ex) { return fallback; }
     }
     private int safePreviewReps() { return readPreview(repetitionsInput,8); }
+    private void setIntervalInputsEnabled(boolean enabled) {
+        sprintMinutesInput.setEnabled(enabled);
+        sprintSecondsInput.setEnabled(enabled);
+        recoveryMinutesInput.setEnabled(enabled);
+        recoverySecondsInput.setEnabled(enabled);
+        repetitionsInput.setEnabled(enabled);
+    }
     private String formatTime(int seconds) {
         return String.format(java.util.Locale.getDefault(),"%02d:%02d",seconds/60,seconds%60);
     }
