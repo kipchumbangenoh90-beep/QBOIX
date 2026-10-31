@@ -2,6 +2,8 @@ package com.qboix.app;
 
 import android.Manifest;
 import android.app.Activity;
+import android.app.Dialog;
+import android.net.Uri;
 import android.content.*;
 import android.content.pm.PackageManager;
 import android.graphics.*;
@@ -82,7 +84,10 @@ public class GpsRunActivity extends Activity {
         TextView swipe=label("⌃  SWIPE UP FOR WORKOUT SETTINGS",GOLD,11,true);swipe.setGravity(Gravity.CENTER);swipe.setPadding(0,dp(9),0,dp(8));base.addView(swipe);
         root.addView(base,new FrameLayout.LayoutParams(-1,-1));
         LinearLayout drawer=buildSettings();drawer.setVisibility(View.GONE);
-        FrameLayout.LayoutParams dp=new FrameLayout.LayoutParams(-1,dp(380),Gravity.BOTTOM);root.addView(drawer,dp);
+        FrameLayout.LayoutParams drawerParams=new FrameLayout.LayoutParams(-1,dp(400),Gravity.BOTTOM);
+        drawerParams.setMargins(dp(14),0,dp(14),dp(14));
+        drawer.setElevation(dp(12));
+        root.addView(drawer,drawerParams);
         View dim=new View(this);dim.setBackgroundColor(0x99000000);dim.setVisibility(View.GONE);
         root.addView(dim,new FrameLayout.LayoutParams(-1,-1));root.removeView(dim);root.addView(dim,new FrameLayout.LayoutParams(-1,-1));dim.setOnClickListener(v->{drawer.setVisibility(View.GONE);dim.setVisibility(View.GONE);settingsOpen=false;});
         swipe.setOnClickListener(v->toggleSettings(drawer,dim));
@@ -92,8 +97,15 @@ public class GpsRunActivity extends Activity {
     }
 
     private LinearLayout buildSettings(){
-        LinearLayout box=new LinearLayout(this);box.setOrientation(LinearLayout.VERTICAL);box.setPadding(dp(18),dp(15),dp(18),dp(18));box.setBackground(panel(Color.rgb(20,21,28),22));
-        TextView title=label("WORKOUT SETTINGS",GOLD,17,true);box.addView(title);
+        LinearLayout box=new LinearLayout(this);box.setOrientation(LinearLayout.VERTICAL);box.setPadding(dp(18),dp(15),dp(18),dp(18));GradientDrawable sheet=new GradientDrawable();
+        sheet.setColor(Color.rgb(8,9,13));
+        sheet.setCornerRadius(dp(26));
+        sheet.setStroke(dp(1),0x557F6A35);
+        box.setBackground(sheet);
+        box.setElevation(dp(12));
+        TextView title=label("WORKOUT SETTINGS",Color.WHITE,17,true);
+        title.setPaintFlags(title.getPaintFlags()|Paint.UNDERLINE_TEXT_FLAG);
+        box.addView(title);
         modeChoice=new Spinner(this);modeChoice.setAdapter(new ArrayAdapter<>(this,android.R.layout.simple_spinner_dropdown_item,new String[]{"Road / distance","Track workout","Cross-country"}));addSetting(box,"WORKOUT MODE",modeChoice);
         trackLengthChoice=new Spinner(this);trackLengthChoice.setAdapter(new ArrayAdapter<>(this,android.R.layout.simple_spinner_dropdown_item,new String[]{"100 m","200 m","300 m","400 m","Custom track"}));addSetting(box,"TRACK LENGTH",trackLengthChoice);
         intervalChoice=new Spinner(this);intervalChoice.setAdapter(new ArrayAdapter<>(this,android.R.layout.simple_spinner_dropdown_item,new String[]{"100 m","200 m","400 m","500 m","1 km","Half mile","1 mile","Custom metres"}));intervalChoice.setSelection(4);addSetting(box,"VOICE ALERT DISTANCE",intervalChoice);
@@ -103,7 +115,57 @@ public class GpsRunActivity extends Activity {
         TextView note=label("Settings apply when the next activity starts.",GREY,10,false);box.addView(note);
         return box;
     }
-    private void addSetting(LinearLayout box,String title,Spinner spinner){box.addView(label(title,GOLD,10,true));box.addView(spinner,new LinearLayout.LayoutParams(-1,dp(42)));}
+    private void addSetting(LinearLayout box,String title,Spinner spinner){
+        TextView heading=label(title,Color.WHITE,11,true);
+        heading.setPaintFlags(heading.getPaintFlags()|Paint.UNDERLINE_TEXT_FLAG);
+        box.addView(heading);
+        spinner.setVisibility(View.GONE);
+        TextView choice=label(String.valueOf(spinner.getSelectedItem())+"     ▾",GOLD,19,true);
+        choice.setPadding(dp(8),dp(9),dp(8),dp(9));
+        choice.setOnClickListener(v->showChoiceDialog(title,spinner,choice));
+        box.addView(choice,new LinearLayout.LayoutParams(-1,dp(48)));
+        View line=new View(this);line.setBackgroundColor(0x557F6A35);
+        box.addView(line,new LinearLayout.LayoutParams(-1,dp(1)));
+    }
+    private void showChoiceDialog(String title,Spinner spinner,TextView display){
+        Dialog dialog=new Dialog(this);
+        FrameLayout frame=new FrameLayout(this);
+        GradientDrawable bg=new GradientDrawable();
+        bg.setColor(Color.rgb(8,9,13));
+        bg.setCornerRadius(dp(24));
+        bg.setStroke(dp(1),GOLD);
+        frame.setBackground(bg);
+        frame.setClipToOutline(true);
+        VideoView video=new VideoView(this);
+        video.setVideoURI(Uri.parse("file:///android_asset/popup_training_bg.mp4"));
+        video.setOnPreparedListener(mp->{mp.setLooping(true);mp.setVolume(0f,0f);video.start();});
+        frame.addView(video,new FrameLayout.LayoutParams(-1,-1));
+        View shade=new View(this);shade.setBackgroundColor(0xCC08090D);
+        frame.addView(shade,new FrameLayout.LayoutParams(-1,-1));
+        LinearLayout options=new LinearLayout(this);
+        options.setOrientation(LinearLayout.VERTICAL);
+        options.setPadding(dp(14),dp(12),dp(14),dp(12));
+        TextView heading=label(title.toUpperCase(Locale.ROOT),Color.WHITE,15,true);
+        heading.setPaintFlags(heading.getPaintFlags()|Paint.UNDERLINE_TEXT_FLAG);
+        heading.setGravity(Gravity.CENTER);
+        options.addView(heading,new LinearLayout.LayoutParams(-1,dp(42)));
+        for(int n=0;n<spinner.getCount();n++){
+            final int index=n;
+            TextView item=label(String.valueOf(spinner.getItemAtPosition(n)),GOLD,18,true);
+            item.setGravity(Gravity.CENTER);
+            item.setPadding(dp(8),dp(12),dp(8),dp(12));
+            if(n==spinner.getSelectedItemPosition())item.setBackground(panel(0x447F6A35,12));
+            item.setOnClickListener(v->{spinner.setSelection(index);display.setText(String.valueOf(spinner.getItemAtPosition(index))+"     ▾");dialog.dismiss();});
+            options.addView(item,new LinearLayout.LayoutParams(-1,dp(54)));
+            if(n<spinner.getCount()-1){View divider=new View(this);divider.setBackgroundColor(0x337F6A35);options.addView(divider,new LinearLayout.LayoutParams(-1,dp(1)));}
+        }
+        frame.addView(options,new FrameLayout.LayoutParams(-1,-2,Gravity.CENTER));
+        dialog.setContentView(frame);
+        if(dialog.getWindow()!=null){dialog.getWindow().setBackgroundDrawableResource(android.R.color.transparent);dialog.getWindow().setLayout((int)(getResources().getDisplayMetrics().widthPixels*.88),-2);}
+        dialog.setOnDismissListener(d->{video.stopPlayback();});
+        dialog.show();
+        if(dialog.getWindow()!=null)dialog.getWindow().setLayout((int)(getResources().getDisplayMetrics().widthPixels*.88),-2);
+    }
     private void toggleSettings(View drawer,View dim){settingsOpen=!settingsOpen;drawer.setVisibility(settingsOpen?View.VISIBLE:View.GONE);dim.setVisibility(settingsOpen?View.VISIBLE:View.GONE);drawer.bringToFront();dim.bringToFront();if(settingsOpen)drawer.bringToFront();}
     private String mapHtml(){return "<!doctype html><html><head><meta name='viewport' content='width=device-width,initial-scale=1,maximum-scale=1'><link rel='stylesheet' href='https://unpkg.com/leaflet@1.9.4/dist/leaflet.css'/><style>html,body,#map{height:100%;margin:0;background:#fff}</style></head><body><div id='map'></div><script src='https://unpkg.com/leaflet@1.9.4/dist/leaflet.js'></script><script>var map=L.map('map').setView([0.5143,35.2698],15);L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png',{maxZoom:19,attribution:'© OpenStreetMap'}).addTo(map);var line=L.polyline([],{color:'#3488ff',weight:5}).addTo(map);var marker=null;function setRoute(a){var pts=a.map(p=>[p.lat,p.lon]);line.setLatLngs(pts);if(pts.length){if(marker)marker.setLatLng(pts[pts.length-1]);else marker=L.circleMarker(pts[pts.length-1],{radius:7,color:'#fff',weight:3,fillColor:'#3488ff',fillOpacity:1}).addTo(map);map.panTo(pts[pts.length-1]);}}</script></body></html>";}
     private void updateRoute(String json){try{JSONArray a=new JSONArray(json);fallback.setRoute(a);if(mapWeb.getVisibility()==View.VISIBLE)mapWeb.evaluateJavascript("setRoute("+json+")",null);}catch(Exception ignored){}}
