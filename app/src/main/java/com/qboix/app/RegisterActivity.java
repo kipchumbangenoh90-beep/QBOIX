@@ -166,46 +166,32 @@ public class RegisterActivity extends Activity {
                         return;
                     }
 
-                    sendVerificationEmail(user);
+                    continueAfterRegistration();
                 });
     }
 
-    private void sendVerificationEmail(FirebaseUser user) {
+    private void continueAfterRegistration() {
 
-        user.sendEmailVerification()
-                .addOnCompleteListener(this, task -> {
+        finishRegistrationButton();
 
-                    auth.signOut();
+        Toast.makeText(
+                this,
+                "Account created. Your personal workout folder is ready.",
+                Toast.LENGTH_LONG
+        ).show();
 
-                    finishRegistrationButton();
+        Intent intent = new Intent(
+                RegisterActivity.this,
+                MainActivity.class
+        );
 
-                    if (task.isSuccessful()) {
+        intent.setFlags(
+                Intent.FLAG_ACTIVITY_NEW_TASK
+                        | Intent.FLAG_ACTIVITY_CLEAR_TASK
+        );
 
-                        Toast.makeText(
-                                this,
-                                "Verification email sent. Check your inbox and spam folder.",
-                                Toast.LENGTH_LONG
-                        ).show();
-
-                        Intent intent = new Intent(
-                                RegisterActivity.this,
-                                LoginActivity.class
-                        );
-
-                        intent.setFlags(
-                                Intent.FLAG_ACTIVITY_CLEAR_TOP
-                        );
-
-                        startActivity(intent);
-                        finish();
-
-                    } else {
-
-                        showMessage(
-                                "Your account was created, but the verification email could not be sent. Please try logging in and requesting verification again."
-                        );
-                    }
-                });
+        startActivity(intent);
+        finish();
     }
 
     private void finishRegistrationButton() {
