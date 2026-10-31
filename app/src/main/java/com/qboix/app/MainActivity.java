@@ -90,6 +90,8 @@ public class MainActivity extends Activity {
             return;
         }
 
+        final boolean[] stageCompleted = {false};
+
         try {
 
             video.setOnPreparedListener(mediaPlayer -> {
@@ -101,14 +103,23 @@ public class MainActivity extends Activity {
             });
 
             video.setOnCompletionListener(mediaPlayer -> {
-                if (!activityDestroyed && !navigationStarted) {
+
+                if (!stageCompleted[0]
+                        && !activityDestroyed
+                        && !navigationStarted) {
+
+                    stageCompleted[0] = true;
                     onDone.run();
                 }
             });
 
             video.setOnErrorListener((mediaPlayer, what, extra) -> {
 
-                if (!activityDestroyed && !navigationStarted) {
+                if (!stageCompleted[0]
+                        && !activityDestroyed
+                        && !navigationStarted) {
+
+                    stageCompleted[0] = true;
                     onDone.run();
                 }
 
@@ -119,7 +130,11 @@ public class MainActivity extends Activity {
 
         } catch (Exception e) {
 
-            if (!activityDestroyed && !navigationStarted) {
+            if (!stageCompleted[0]
+                    && !activityDestroyed
+                    && !navigationStarted) {
+
+                stageCompleted[0] = true;
                 onDone.run();
             }
         }
@@ -152,8 +167,15 @@ public class MainActivity extends Activity {
 
             FirebaseUser refreshedUser = auth.getCurrentUser();
 
-            if (task.isSuccessful()
-                    && refreshedUser != null
+            if (!task.isSuccessful()) {
+
+                // Network or server problem.
+                // Keep the existing session and open login.
+                openLogin();
+                return;
+            }
+
+            if (refreshedUser != null
                     && refreshedUser.isEmailVerified()) {
 
                 openDashboard();
