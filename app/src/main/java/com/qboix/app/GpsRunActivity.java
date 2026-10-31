@@ -49,8 +49,8 @@ public class GpsRunActivity extends Activity {
 
     @Override public void onCreate(Bundle b){super.onCreate(b);activityType=getIntent().getStringExtra("activity_type");if(activityType==null)activityType="RUN";buildScreen();}
     private void buildScreen(){
-        FrameLayout root=new FrameLayout(this); root.setBackgroundColor(BG);
-        LinearLayout base=new LinearLayout(this);base.setOrientation(LinearLayout.VERTICAL);
+        FrameLayout root=new FrameLayout(this); root.setBackgroundColor(Color.TRANSPARENT);
+        LinearLayout base=new LinearLayout(this);base.setOrientation(LinearLayout.VERTICAL);base.setBackgroundColor(Color.TRANSPARENT);
         LinearLayout header=new LinearLayout(this);header.setGravity(Gravity.CENTER_VERTICAL);header.setPadding(dp(16),dp(8),dp(16),dp(8));
         TextView brand=label("Q-BOIX",GOLD,20,true);header.addView(brand,new LinearLayout.LayoutParams(0,-2,1));
         activityTitle=label("GPS "+activityType,Color.WHITE,18,true);header.addView(activityTitle);
@@ -66,7 +66,7 @@ public class GpsRunActivity extends Activity {
         mapWeb.setVisibility(View.INVISIBLE);fallback.setVisibility(View.VISIBLE);
         mapWeb.loadDataWithBaseURL("https://qboix.local/",mapHtml(),"text/html","UTF-8",null);
         base.addView(mapFrame,new LinearLayout.LayoutParams(-1,0,1));
-        LinearLayout live=new LinearLayout(this);live.setOrientation(LinearLayout.VERTICAL);live.setPadding(dp(12),dp(10),dp(12),dp(8));live.setBackground(panel(BG,18));
+        LinearLayout live=new LinearLayout(this);live.setOrientation(LinearLayout.VERTICAL);live.setPadding(dp(12),dp(10),dp(12),dp(8));live.setBackgroundColor(Color.TRANSPARENT);
         status=label("Waiting for GPS",GREY,11,false);live.addView(status);
         LinearLayout row1=new LinearLayout(this);row1.setOrientation(LinearLayout.HORIZONTAL);
         distance=metric(row1,"0.00","KM");time=metric(row1,"00:00","TIME");pace=metric(row1,"--:--","AVG PACE / KM");
@@ -116,8 +116,44 @@ public class GpsRunActivity extends Activity {
     @Override protected void onStart(){super.onStart();IntentFilter f=new IntentFilter(GpsTrackingService.ACTION);if(Build.VERSION.SDK_INT>=33)registerReceiver(receiver,f,Context.RECEIVER_NOT_EXPORTED);else registerReceiver(receiver,f);registered=true;}
     @Override protected void onStop(){if(registered){unregisterReceiver(receiver);registered=false;}super.onStop();}
     @Override protected void onDestroy(){if(mapWeb!=null)mapWeb.destroy();super.onDestroy();}
-    private TextView metric(LinearLayout row,String value,String caption){LinearLayout c=new LinearLayout(this);c.setOrientation(1);c.setGravity(Gravity.CENTER);TextView v=label(value,GOLD,19,true);TextView t=label(caption,GREY,9,true);c.addView(v);c.addView(t);row.addView(c,new LinearLayout.LayoutParams(0,-1,1));return v;}
-    private Button button(String s,int color){Button b=new Button(this);b.setText(s);b.setTextSize(10);b.setTextColor(Color.BLACK);b.setTypeface(null,1);b.setBackground(panel(color,14));return b;}
+    private TextView metric(LinearLayout row,String value,String caption){
+        LinearLayout card=new LinearLayout(this);
+        card.setOrientation(LinearLayout.VERTICAL);
+        card.setGravity(Gravity.CENTER);
+        card.setPadding(dp(6),dp(5),dp(6),dp(5));
+        GradientDrawable glass=new GradientDrawable();
+        glass.setColor(0x40FFFFFF);
+        glass.setCornerRadius(dp(16));
+        glass.setStroke(dp(1),0x22FFFFFF);
+        card.setBackground(glass);
+        LinearLayout.LayoutParams params=new LinearLayout.LayoutParams(0,-1,1);
+        params.setMargins(dp(4),dp(4),dp(4),dp(4));
+        TextView v=label(value,GOLD,19,true);
+        TextView t=label(caption,GREY,9,true);
+        card.addView(v);
+        card.addView(t);
+        row.addView(card,params);
+        return v;
+    }
+    private Button button(String s,int color){
+        Button b=new Button(this);
+        b.setText(s);
+        b.setTextSize(10);
+        b.setTextColor(Color.BLACK);
+        b.setTypeface(null,1);
+        b.setAllCaps(false);
+        b.setBackground(fadeButton(color));
+        return b;
+    }
+    private android.graphics.drawable.Drawable fadeButton(int color){
+        int transparent=color & 0x00FFFFFF;
+        GradientDrawable glow=new GradientDrawable(
+            GradientDrawable.Orientation.LEFT_RIGHT,
+            new int[]{transparent,color,color,transparent});
+        glow.setGradientType(GradientDrawable.LINEAR_GRADIENT);
+        glow.setCornerRadius(dp(28));
+        return glow;
+    }
     private TextView label(String s,int c,float size,boolean bold){TextView t=new TextView(this);t.setText(s);t.setTextColor(c);t.setTextSize(size);if(bold)t.setTypeface(null,1);return t;}
     private GradientDrawable panel(int c,int r){GradientDrawable d=new GradientDrawable();d.setColor(c);d.setCornerRadius(dp(r));return d;}
     private int dp(float n){return (int)(n*getResources().getDisplayMetrics().density+.5f);}
