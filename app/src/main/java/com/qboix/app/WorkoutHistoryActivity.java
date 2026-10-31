@@ -116,6 +116,7 @@ public class WorkoutHistoryActivity extends Activity {
             String paceText=pace>0?String.format(Locale.getDefault(),"%d:%02d /km",(int)pace,(int)Math.round(pace)%60):"--:-- /km";
             TextView details=text("Time "+formatTime(elapsed)+" • Avg pace "+paceText,GREY,12,false);LinearLayout.LayoutParams dp3=new LinearLayout.LayoutParams(-1,-2);dp3.topMargin=dp(5);card.addView(details,dp3);
             JSONArray route=item.optJSONArray("route");TextView pts=text("GPS route points: "+(route==null?0:route.length()),GREY,11,false);LinearLayout.LayoutParams dp4=new LinearLayout.LayoutParams(-1,-2);dp4.topMargin=dp(5);card.addView(pts,dp4);
+            boolean track=item.optBoolean("trackMode",false);if(track){int lapCount=item.optInt("lapCount",0);double trackLength=item.optDouble("trackLengthMeters",400);TextView lapInfo=text("TRACK WORKOUT • "+lapCount+" laps • "+(int)trackLength+"m track",GOLD,12,true);LinearLayout.LayoutParams lpLap=new LinearLayout.LayoutParams(-1,-2);lpLap.topMargin=dp(8);card.addView(lapInfo,lpLap);JSONArray splits=item.optJSONArray("lapSplits");if(splits!=null){for(int k=0;k<splits.length();k++){JSONObject split=splits.optJSONObject(k);if(split!=null){int n=split.optInt("lap",k+1),s=split.optInt("splitSeconds",0);TextView splitText=text("Lap "+n+" split: "+formatTime(s),GREY,11,false);LinearLayout.LayoutParams slp=new LinearLayout.LayoutParams(-1,-2);slp.topMargin=dp(3);card.addView(splitText,slp);}}}}
         }
         setContentView(root);
     }
