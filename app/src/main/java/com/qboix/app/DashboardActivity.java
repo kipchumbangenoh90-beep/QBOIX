@@ -247,9 +247,7 @@ public class DashboardActivity extends Activity {
         hp.bottomMargin = dp(18);
         mainLayout.addView(hero,hp);
 
-        addActivityMode(R.drawable.ic_mode_run, "RUN", "Track your run with GPS", new int[]{Color.rgb(10,20,37),Color.rgb(28,58,91)}, () -> startActivity(new Intent(DashboardActivity.this, GpsRunActivity.class)));
-        addActivityMode(R.drawable.ic_mode_jog, "JOG", "Build rhythm and endurance", new int[]{Color.rgb(25,30,42),Color.rgb(48,58,75)}, () -> startActivity(new Intent(DashboardActivity.this, GpsRunActivity.class)));
-        addActivityMode(R.drawable.ic_mode_walk, "WALK", "Record a relaxed walk", new int[]{Color.rgb(35,29,22),Color.rgb(83,62,38)}, () -> startActivity(new Intent(DashboardActivity.this, GpsRunActivity.class)));
+        addContinuousRunnerCards();
         addSpace(18);
         addText("YOUR PERFORMANCE", GOLD, 12, true);
         addSpace(9);
@@ -267,41 +265,81 @@ public class DashboardActivity extends Activity {
         addText("Welcome, " + name, GREY, 12, false);
     }
 
-    private void addActivityMode(int iconRes, String title, String subtitle, int[] colors, Runnable action) {
-        LinearLayout card = new LinearLayout(this);
-        card.setGravity(Gravity.CENTER_VERTICAL);
-        card.setOrientation(LinearLayout.HORIZONTAL);
-        card.setPadding(dp(16), dp(13), dp(14), dp(13));
-        GradientDrawable bg = new GradientDrawable(GradientDrawable.Orientation.LEFT_RIGHT, colors);
-        bg.setCornerRadius(dp(28));
-        bg.setStroke(dp(1), Color.rgb(205, 155, 51));
-        card.setBackground(bg);
-        ImageView figure = new ImageView(this);
-        figure.setImageResource(iconRes);
-        figure.setColorFilter(Color.rgb(255, 199, 75));
-        figure.setScaleType(ImageView.ScaleType.FIT_CENTER);
-        figure.setElevation(dp(8));
-        card.addView(figure, new LinearLayout.LayoutParams(dp(58), dp(58)));
-        LinearLayout info = new LinearLayout(this);
-        info.setOrientation(LinearLayout.VERTICAL);
-        info.setPadding(dp(12), 0, dp(4), 0);
-        TextView heading = text(title, WHITE, 23, true);
-        heading.setTypeface(Typeface.create("sans-serif", Typeface.BOLD_ITALIC));
-        info.addView(heading);
-        info.addView(text(subtitle, GREY, 11, false));
-        card.addView(info, new LinearLayout.LayoutParams(0,-2,1));
-        TextView play = text("▶", Color.rgb(255, 216, 125), 20, true);
-        play.setGravity(Gravity.CENTER);
-        GradientDrawable playBg = new GradientDrawable();
-        playBg.setColor(Color.rgb(12,17,27));
-        playBg.setCornerRadius(dp(40));
-        playBg.setStroke(dp(2), GOLD);
-        play.setBackground(playBg);
-        card.addView(play, new LinearLayout.LayoutParams(dp(49),dp(49)));
-        card.setOnClickListener(v -> action.run());
-        LinearLayout.LayoutParams p = new LinearLayout.LayoutParams(-1,dp(91));
-        p.bottomMargin = dp(13);
-        mainLayout.addView(card,p);
+    // Three workout panels reveal one continuous runner photograph.
+    private void addContinuousRunnerCards() {
+        final int cardHeight = dp(91);
+        final int gap = dp(13);
+        final int totalHeight = cardHeight * 3 + gap * 2;
+
+        FrameLayout stack = new FrameLayout(this);
+        stack.setBackground(background(Color.BLACK, 24));
+        stack.setClipToOutline(true);
+
+        ImageView runnerPhoto = new ImageView(this);
+        runnerPhoto.setImageResource(R.drawable.runner_split_photo);
+        runnerPhoto.setScaleType(ImageView.ScaleType.CENTER_CROP);
+        stack.addView(runnerPhoto, new FrameLayout.LayoutParams(-1, -1));
+
+        View shade = new View(this);
+        shade.setBackgroundColor(Color.argb(92, 0, 0, 0));
+        stack.addView(shade, new FrameLayout.LayoutParams(-1, -1));
+
+        String[] titles = {"RUN", "JOG", "WALK"};
+        String[] subtitles = {"Track your run with GPS", "Build rhythm and endurance", "Record a relaxed walk"};
+
+        for (int i = 0; i < titles.length; i++) {
+            FrameLayout panel = new FrameLayout(this);
+            LinearLayout content = new LinearLayout(this);
+            content.setGravity(Gravity.CENTER_VERTICAL);
+            content.setOrientation(LinearLayout.HORIZONTAL);
+            content.setPadding(dp(17), dp(10), dp(14), dp(10));
+
+            LinearLayout info = new LinearLayout(this);
+            info.setOrientation(LinearLayout.VERTICAL);
+            TextView heading = text(titles[i], Color.rgb(255, 211, 112), 27, true);
+            heading.setTypeface(Typeface.create("sans-serif", Typeface.BOLD_ITALIC));
+            heading.setShadowLayer(dp(5), 0, dp(2), Color.BLACK);
+            info.addView(heading);
+            TextView detail = text(subtitles[i], WHITE, 11, true);
+            detail.setShadowLayer(dp(4), 0, dp(1), Color.BLACK);
+            info.addView(detail);
+            content.addView(info, new LinearLayout.LayoutParams(0, -2, 1));
+
+            TextView play = text("▶", Color.rgb(255, 220, 139), 19, true);
+            play.setGravity(Gravity.CENTER);
+            GradientDrawable playBg = new GradientDrawable();
+            playBg.setColor(Color.argb(220, 8, 10, 15));
+            playBg.setCornerRadius(dp(40));
+            playBg.setStroke(dp(2), GOLD);
+            play.setBackground(playBg);
+            play.setElevation(dp(5));
+            content.addView(play, new LinearLayout.LayoutParams(dp(49), dp(49)));
+            panel.addView(content, new FrameLayout.LayoutParams(-1, -1));
+
+            GradientDrawable outline = new GradientDrawable();
+            outline.setColor(Color.TRANSPARENT);
+            outline.setCornerRadius(dp(20));
+            outline.setStroke(dp(2), Color.rgb(220, 174, 76));
+            panel.setBackground(outline);
+
+            FrameLayout.LayoutParams pp = new FrameLayout.LayoutParams(-1, cardHeight);
+            pp.topMargin = i * (cardHeight + gap);
+            stack.addView(panel, pp);
+            panel.setOnClickListener(v -> startActivity(new Intent(DashboardActivity.this, GpsRunActivity.class)));
+        }
+
+        // Opaque black bars hide the image between panels, making one photo appear in three windows.
+        for (int i = 1; i <= 2; i++) {
+            View separator = new View(this);
+            separator.setBackgroundColor(Color.BLACK);
+            FrameLayout.LayoutParams sp = new FrameLayout.LayoutParams(-1, gap);
+            sp.topMargin = i * cardHeight + (i - 1) * gap;
+            stack.addView(separator, sp);
+        }
+
+        LinearLayout.LayoutParams params = new LinearLayout.LayoutParams(-1, totalHeight);
+        params.bottomMargin = dp(13);
+        mainLayout.addView(stack, params);
     }
 
     private void showMaps() {
