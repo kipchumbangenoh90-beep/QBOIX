@@ -59,7 +59,7 @@ public class GpsRunActivity extends Activity {
         fallback=new RouteCanvas(this);mapFrame.addView(fallback,new FrameLayout.LayoutParams(-1,-1));
         mapWeb=new WebView(this);mapWeb.setBackgroundColor(Color.WHITE);mapWeb.getSettings().setJavaScriptEnabled(true);mapWeb.getSettings().setDomStorageEnabled(true);
         mapWeb.setWebViewClient(new WebViewClient(){
-            @Override public void onPageFinished(WebView v,String u){status.setText("Online map ready");}
+            @Override public void onPageFinished(WebView v,String u){mapWeb.setVisibility(View.VISIBLE);fallback.setVisibility(View.GONE);status.setText("Online map ready");}
             @Override public void onReceivedError(WebView v,WebResourceRequest req,WebResourceError err){if(req.isForMainFrame()){mapWeb.setVisibility(View.GONE);fallback.setVisibility(View.VISIBLE);status.setText("Offline map • drawing GPS route");}}
         });
         mapFrame.addView(mapWeb,new FrameLayout.LayoutParams(-1,-1));
