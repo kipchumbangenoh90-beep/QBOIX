@@ -3,7 +3,6 @@ package com.qboix.app;
 import android.Manifest;
 import android.app.Activity;
 import android.app.Dialog;
-import android.net.Uri;
 import android.content.*;
 import android.content.pm.PackageManager;
 import android.graphics.*;
@@ -68,8 +67,16 @@ public class GpsRunActivity extends Activity {
         mapWeb.setVisibility(View.INVISIBLE);fallback.setVisibility(View.VISIBLE);
         mapWeb.loadDataWithBaseURL("https://qboix.local/",mapHtml(),"text/html","UTF-8",null);
         base.addView(mapFrame,new LinearLayout.LayoutParams(-1,0,1));
-        LinearLayout live=new LinearLayout(this);live.setOrientation(LinearLayout.VERTICAL);live.setPadding(dp(12),dp(10),dp(12),dp(8));live.setBackgroundColor(Color.TRANSPARENT);
+        LinearLayout live=new LinearLayout(this);live.setOrientation(LinearLayout.VERTICAL);live.setPadding(dp(12),dp(10),dp(12),dp(8));
+        GradientDrawable livePanel=new GradientDrawable();
+        livePanel.setColor(0xEE09090D);
+        livePanel.setCornerRadius(dp(26));
+        livePanel.setStroke(dp(1),0x337F6A35);
+        live.setBackground(livePanel);
+        live.setElevation(dp(10));
         status=label("Waiting for GPS",GREY,11,false);live.addView(status);
+        LinearLayout.LayoutParams liveParams=new LinearLayout.LayoutParams(-1,-2);
+        liveParams.setMargins(dp(14),dp(8),dp(14),dp(8));
         LinearLayout row1=new LinearLayout(this);row1.setOrientation(LinearLayout.HORIZONTAL);
         distance=metric(row1,"0.00","KM");time=metric(row1,"00:00","TIME");pace=metric(row1,"--:--","AVG PACE / KM");
         live.addView(row1,new LinearLayout.LayoutParams(-1,dp(76)));
@@ -80,7 +87,7 @@ public class GpsRunActivity extends Activity {
         start=button("START "+activityType,Color.rgb(55,190,125));pause=button("PAUSE",GOLD);finish=button("FINISH",Color.rgb(220,100,85));
         pause.setEnabled(false);finish.setEnabled(false);
         controls.addView(start,new LinearLayout.LayoutParams(0,dp(48),1));controls.addView(pause,new LinearLayout.LayoutParams(0,dp(48),1));controls.addView(finish,new LinearLayout.LayoutParams(0,dp(48),1));
-        live.addView(controls);base.addView(live,new LinearLayout.LayoutParams(-1,-2));
+        live.addView(controls);base.addView(live,liveParams);
         TextView swipe=label("⌃  SWIPE UP FOR WORKOUT SETTINGS",GOLD,11,true);swipe.setGravity(Gravity.CENTER);swipe.setPadding(0,dp(9),0,dp(8));base.addView(swipe);
         root.addView(base,new FrameLayout.LayoutParams(-1,-1));
         LinearLayout drawer=buildSettings();drawer.setVisibility(View.GONE);
@@ -91,7 +98,17 @@ public class GpsRunActivity extends Activity {
         View dim=new View(this);dim.setBackgroundColor(0x99000000);dim.setVisibility(View.GONE);
         root.addView(dim,new FrameLayout.LayoutParams(-1,-1));root.removeView(dim);root.addView(dim,new FrameLayout.LayoutParams(-1,-1));dim.setOnClickListener(v->{drawer.setVisibility(View.GONE);dim.setVisibility(View.GONE);settingsOpen=false;});
         swipe.setOnClickListener(v->toggleSettings(drawer,dim));
-        root.setOnTouchListener(new View.OnTouchListener(){float y;public boolean onTouch(View v,android.view.MotionEvent e){if(e.getAction()==MotionEvent.ACTION_DOWN){y=e.getY();return true;}if(e.getAction()==MotionEvent.ACTION_UP){float dy=e.getY()-y;if(dy < -45)toggleSettings(drawer,dim);else if(dy>45&&settingsOpen)toggleSettings(drawer,dim);return true;}return true;}});
+        View.OnTouchListener swipeGesture=new View.OnTouchListener(){float y;public boolean onTouch(View v,android.view.MotionEvent e){
+            if(e.getAction()==MotionEvent.ACTION_DOWN){y=e.getRawY();return true;}
+            if(e.getAction()==MotionEvent.ACTION_UP){float dy=e.getRawY()-y;
+                if(dy < -dp(35))toggleSettings(drawer,dim);
+                else if(dy>dp(35)&&settingsOpen)toggleSettings(drawer,dim);
+                return true;
+            }return true;
+        }};
+        live.setOnTouchListener(swipeGesture);
+        status.setOnTouchListener(swipeGesture);
+        swipe.setOnTouchListener(swipeGesture);
         start.setOnClickListener(v->requestStart());pause.setOnClickListener(v->command(paused?GpsTrackingService.RESUME:GpsTrackingService.PAUSE));finish.setOnClickListener(v->command(GpsTrackingService.FINISH));
         setContentView(root);
     }
@@ -136,12 +153,12 @@ public class GpsRunActivity extends Activity {
         bg.setStroke(dp(1),GOLD);
         frame.setBackground(bg);
         frame.setClipToOutline(true);
-        VideoView video=new VideoView(this);
-        video.setVideoURI(Uri.parse("file:///android_asset/popup_training_bg.mp4"));
-        video.setOnPreparedListener(mp->{mp.setLooping(true);mp.setVolume(0f,0f);video.start();});
-        frame.addView(video,new FrameLayout.LayoutParams(-1,-1));
-        View shade=new View(this);shade.setBackgroundColor(0xCC08090D);
-        frame.addView(shade,new FrameLayout.LayoutParams(-1,-1));
+        GradientDrawable popupSurface=new GradientDrawable(
+            GradientDrawable.Orientation.TL_BR,
+            new int[]{0xFF171923,0xFF09090D,0xFF211B10});
+        popupSurface.setCornerRadius(dp(24));
+        frame.setBackground(popupSurface);
+        frame.setClipToOutline(true);
         LinearLayout options=new LinearLayout(this);
         options.setOrientation(LinearLayout.VERTICAL);
         options.setPadding(dp(14),dp(12),dp(14),dp(12));
@@ -162,7 +179,6 @@ public class GpsRunActivity extends Activity {
         frame.addView(options,new FrameLayout.LayoutParams(-1,-2,Gravity.CENTER));
         dialog.setContentView(frame);
         if(dialog.getWindow()!=null){dialog.getWindow().setBackgroundDrawableResource(android.R.color.transparent);dialog.getWindow().setLayout((int)(getResources().getDisplayMetrics().widthPixels*.88),-2);}
-        dialog.setOnDismissListener(d->{video.stopPlayback();});
         dialog.show();
         if(dialog.getWindow()!=null)dialog.getWindow().setLayout((int)(getResources().getDisplayMetrics().widthPixels*.88),-2);
     }
