@@ -285,7 +285,7 @@ public class FartlekActivity extends Activity {
         progressText.setText(targetRepetitions+" / "+targetRepetitions+" intervals");
         elapsedText.setText("Elapsed "+formatTime(elapsedSeconds));
         startButton.setText("START AGAIN");
-        sprintInput.setEnabled(true); recoveryInput.setEnabled(true); repetitionsInput.setEnabled(true);
+        setIntervalInputsEnabled(true);
         Toast.makeText(this,"Fartlek workout saved on this device.",Toast.LENGTH_LONG).show();
     }
 
