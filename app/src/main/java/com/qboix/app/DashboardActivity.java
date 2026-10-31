@@ -333,9 +333,9 @@ public class DashboardActivity extends Activity {
                 "START GPS RUN",
                 "Record distance, pace, time and route",
                 GREEN,
-                () -> showMessage(
-                        "The GPS tracking engine is scheduled for Step 9."
-                )
+                () -> startActivity(new Intent(
+                        DashboardActivity.this, GpsRunActivity.class
+                ))
         );
 
         addActionCard(

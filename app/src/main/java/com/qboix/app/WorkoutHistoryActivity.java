@@ -40,7 +40,7 @@ public class WorkoutHistoryActivity extends Activity {
         TextView heading=text("WORKOUT HISTORY",WHITE,21,true);
         LinearLayout.LayoutParams hp=new LinearLayout.LayoutParams(-1,-2);
         hp.topMargin=dp(20); root.addView(heading,hp);
-        TextView subtitle=text("Your completed Fartlek sessions saved on this device.",GREY,13,false);
+        TextView subtitle=text("Your completed runs and Fartlek sessions saved on this device.",GREY,13,false);
         LinearLayout.LayoutParams sp=new LinearLayout.LayoutParams(-1,-2);
         sp.topMargin=dp(7); root.addView(subtitle,sp);
 
@@ -54,7 +54,8 @@ public class WorkoutHistoryActivity extends Activity {
         scroll.addView(list);
 
         JSONArray sessions=WorkoutStore.getFartlekSessions(this);
-        if(sessions.length()==0) {
+        JSONArray runs=WorkoutStore.getRunSessions(this);
+        if(sessions.length()==0 && runs.length()==0) {
             LinearLayout empty=new LinearLayout(this);
             empty.setOrientation(LinearLayout.VERTICAL);
             empty.setGravity(Gravity.CENTER);
@@ -63,13 +64,13 @@ public class WorkoutHistoryActivity extends Activity {
             TextView title=text("NO WORKOUTS YET",GOLD,16,true);
             title.setGravity(Gravity.CENTER);
             empty.addView(title);
-            TextView detail=text("Complete a Fartlek session and it will appear here.",GREY,13,false);
+            TextView detail=text("Complete a GPS run or Fartlek session and it will appear here.",GREY,13,false);
             detail.setGravity(Gravity.CENTER);
             LinearLayout.LayoutParams ep=new LinearLayout.LayoutParams(-1,-2);
             ep.topMargin=dp(9); empty.addView(detail,ep);
             list.addView(empty);
         } else {
-            TextView count=text(sessions.length()+" COMPLETED SESSION"+(sessions.length()==1?"":"S"),GOLD,12,true);
+            TextView count=text((sessions.length()+runs.length())+" COMPLETED WORKOUT"+(sessions.length()+runs.length()==1?"":"S"),GOLD,12,true);
             list.addView(count);
             for(int i=sessions.length()-1;i>=0;i--) {
                 JSONObject item=sessions.optJSONObject(i);
@@ -99,6 +100,22 @@ public class WorkoutHistoryActivity extends Activity {
                 LinearLayout.LayoutParams resultP=new LinearLayout.LayoutParams(-1,-2);
                 resultP.topMargin=dp(5); card.addView(result,resultP);
             }
+        }
+
+        for(int i=runs.length()-1;i>=0;i--){
+            JSONObject item=runs.optJSONObject(i); if(item==null)continue;
+            long savedAt=item.optLong("savedAt",0); double metres=item.optDouble("distanceMeters",0);
+            int elapsed=item.optInt("elapsedSeconds",0); double pace=item.optDouble("averagePaceSecondsPerKm",0);
+            String date=savedAt>0?new SimpleDateFormat("EEE, dd MMM yyyy • HH:mm",Locale.getDefault()).format(new Date(savedAt)):"Date unavailable";
+            LinearLayout card=new LinearLayout(this); card.setOrientation(LinearLayout.VERTICAL);
+            card.setPadding(dp(16),dp(15),dp(16),dp(15)); card.setBackground(panel());
+            LinearLayout.LayoutParams cp=new LinearLayout.LayoutParams(-1,-2); cp.topMargin=dp(11); list.addView(card,cp);
+            card.addView(text("GPS RUN",GOLD,14,true));
+            TextView dt=text(date,GREY,11,false); LinearLayout.LayoutParams dp1=new LinearLayout.LayoutParams(-1,-2);dp1.topMargin=dp(5);card.addView(dt,dp1);
+            TextView dist=text(String.format(Locale.getDefault(),"%.2f km",metres/1000),WHITE,20,true);LinearLayout.LayoutParams dp2=new LinearLayout.LayoutParams(-1,-2);dp2.topMargin=dp(12);card.addView(dist,dp2);
+            String paceText=pace>0?String.format(Locale.getDefault(),"%d:%02d /km",(int)pace,(int)Math.round(pace)%60):"--:-- /km";
+            TextView details=text("Time "+formatTime(elapsed)+" • Avg pace "+paceText,GREY,12,false);LinearLayout.LayoutParams dp3=new LinearLayout.LayoutParams(-1,-2);dp3.topMargin=dp(5);card.addView(details,dp3);
+            JSONArray route=item.optJSONArray("route");TextView pts=text("GPS route points: "+(route==null?0:route.length()),GREY,11,false);LinearLayout.LayoutParams dp4=new LinearLayout.LayoutParams(-1,-2);dp4.topMargin=dp(5);card.addView(pts,dp4);
         }
         setContentView(root);
     }
