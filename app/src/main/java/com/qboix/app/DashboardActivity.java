@@ -8,7 +8,6 @@ import android.graphics.drawable.GradientDrawable;
 import android.os.Bundle;
 import android.view.Gravity;
 import android.view.View;
-import android.widget.Button;
 import android.widget.LinearLayout;
 import android.widget.ScrollView;
 import android.widget.TextView;
@@ -29,8 +28,16 @@ public class DashboardActivity extends Activity {
     private LinearLayout mainLayout;
     private LinearLayout navigation;
     private String currentPage = "Home";
-
     private FirebaseAuth auth;
+
+    private final String[] tabs = {
+            "Home", "Activities", "Training",
+            "Community", "Profile"
+    };
+
+    private final String[] icons = {
+            "⌂", "◉", "◷", "◎", "♙"
+    };
 
     @Override
     protected void onCreate(Bundle savedInstanceState) {
@@ -58,6 +65,7 @@ public class DashboardActivity extends Activity {
 
         ScrollView scroll = new ScrollView(this);
         scroll.setFillViewport(true);
+        scroll.setVerticalScrollBarEnabled(false);
 
         mainLayout = new LinearLayout(this);
         mainLayout.setOrientation(LinearLayout.VERTICAL);
@@ -72,17 +80,8 @@ public class DashboardActivity extends Activity {
         navigation = new LinearLayout(this);
         navigation.setOrientation(LinearLayout.HORIZONTAL);
         navigation.setGravity(Gravity.CENTER);
-        navigation.setPadding(dp(4), dp(8), dp(4), dp(8));
+        navigation.setPadding(dp(4), dp(7), dp(4), dp(7));
         navigation.setBackgroundColor(Color.rgb(17, 17, 23));
-
-        String[] tabs = {
-                "Home", "Activities", "Training",
-                "Community", "Profile"
-        };
-
-        String[] icons = {
-                "⌂", "◉", "◷", "◎", "♙"
-        };
 
         for (int i = 0; i < tabs.length; i++) {
 
@@ -93,22 +92,10 @@ public class DashboardActivity extends Activity {
             item.setGravity(Gravity.CENTER);
             item.setPadding(dp(2), dp(7), dp(2), dp(7));
 
-            TextView icon = text(
-                    icons[i],
-                    GOLD,
-                    21,
-                    true
-            );
-
+            TextView icon = text(icons[i], GOLD, 21, true);
             icon.setGravity(Gravity.CENTER);
 
-            TextView label = text(
-                    tabs[i],
-                    GREY,
-                    10,
-                    true
-            );
-
+            TextView label = text(tabs[i], GREY, 10, true);
             label.setGravity(Gravity.CENTER);
 
             item.addView(icon);
@@ -129,11 +116,9 @@ public class DashboardActivity extends Activity {
     private void showPage(String page) {
 
         currentPage = page;
-
         mainLayout.removeAllViews();
 
         switch (page) {
-
             case "Home":
                 showHome();
                 break;
@@ -166,7 +151,32 @@ public class DashboardActivity extends Activity {
                 showSettings();
                 break;
         }
+
+        updateNavigation();
     }
+
+    private void updateNavigation() {
+
+        for (int i = 0; i < navigation.getChildCount(); i++) {
+
+            LinearLayout item =
+                    (LinearLayout) navigation.getChildAt(i);
+
+            boolean selected = tabs[i].equals(currentPage);
+
+            TextView icon = (TextView) item.getChildAt(0);
+            TextView label = (TextView) item.getChildAt(1);
+
+            icon.setTextColor(selected ? GOLD : GREY);
+            label.setTextColor(selected ? GOLD : GREY);
+
+            item.setBackground(selected
+                    ? background(Color.rgb(38, 34, 25), 10)
+                    : background(Color.TRANSPARENT, 10));
+        }
+    }
+
+    // HOME DASHBOARD
 
     private void showHome() {
 
@@ -184,17 +194,24 @@ public class DashboardActivity extends Activity {
 
         addSpace(28);
 
-        addText("Welcome back,", GREY, 15, false);
+        addText("WELCOME BACK,", GREY, 12, true);
         addText(name, WHITE, 27, true);
+
+        addSpace(6);
+
+        addText(
+                "One vision. Many creations.",
+                GOLD, 13, true
+        );
 
         addText(
                 "Your journey. Your performance. Your achievement.",
                 GREY, 12, false
         );
 
-        addSpace(25);
+        addSpace(26);
 
-        addText("TODAY'S PERFORMANCE", GOLD, 13, true);
+        addSection("TODAY'S PERFORMANCE");
 
         LinearLayout stats = new LinearLayout(this);
         stats.setOrientation(LinearLayout.HORIZONTAL);
@@ -202,73 +219,113 @@ public class DashboardActivity extends Activity {
         addStat(stats, "0.00 km", "DISTANCE");
         addStat(stats, "00:00", "DURATION");
 
-        addView(mainLayout, stats, 16);
+        addView(mainLayout, stats, 0);
 
         LinearLayout stats2 = new LinearLayout(this);
         stats2.setOrientation(LinearLayout.HORIZONTAL);
 
-        addStat(stats2, "0:00/km", "AVG PACE");
+        addStat(stats2, "--", "AVG PACE");
         addStat(stats2, "0", "CALORIES");
 
-        addView(mainLayout, stats2, 10);
+        addView(mainLayout, stats2, 8);
 
-        addSpace(25);
+        addSpace(12);
+
+        addText(
+                "No recorded activities yet.",
+                GREY, 11, false
+        );
+
+        addSpace(18);
+
+        addSection("YOUR TRAINING");
 
         addActionCard(
                 "START RUNNING",
-                "Record a GPS running activity",
+                "GPS running, distance, pace and route",
                 GREEN,
                 () -> showPage("Activities")
         );
 
         addActionCard(
                 "FARTLEK TRAINING",
-                "Create sprint and recovery intervals",
+                "Build sprint and recovery intervals",
                 BLUE,
                 () -> showPage("Training")
+        );
+
+        addActionCard(
+                "TRAINING PLANS",
+                "Organise your running sessions",
+                GOLD,
+                () -> showPage("Training")
+        );
+
+        addSection("WEEKLY OVERVIEW");
+
+        LinearLayout weekly = new LinearLayout(this);
+        weekly.setOrientation(LinearLayout.HORIZONTAL);
+
+        addStat(weekly, "0", "RUNS");
+        addStat(weekly, "0.0 km", "DISTANCE");
+
+        addView(mainLayout, weekly, 0);
+
+        addSpace(8);
+
+        addText(
+                "Your weekly statistics will update when recorded workouts are connected.",
+                GREY, 11, false
         );
 
         addSection("YOUR ATHLETE SPACE");
 
         addActionCard(
                 "PERSONAL RECORDS",
-                "View your running performance",
+                "Review your best running performances",
                 GOLD,
                 () -> showPage("Records")
         );
 
         addActionCard(
                 "ACHIEVEMENTS",
-                "Your medals and milestones",
+                "Track your medals and milestones",
                 GOLD,
                 () -> showPage("Achievements")
         );
 
         addActionCard(
+                "Q-BOIX COMMUNITY",
+                "Connect with other athletes",
+                BLUE,
+                () -> showPage("Community")
+        );
+
+        addActionCard(
                 "SETTINGS",
-                "Manage your application",
+                "Manage your application preferences",
                 GREY,
                 () -> showPage("Settings")
         );
     }
+
+    // ACTIVITIES
 
     private void showActivities() {
 
         pageHeading("ACTIVITIES");
 
         addText(
-                "Your running and workout history will appear here.",
+                "Your running and workout centre.",
                 GREY, 14, false
         );
-
-        addSpace(20);
 
         addActionCard(
                 "START GPS RUN",
                 "Record distance, pace, time and route",
                 GREEN,
                 () -> showMessage(
-                        "GPS running will be implemented in Step 9."
+                        "The GPS tracking engine is scheduled for Step 9."
                 )
         );
 
@@ -277,10 +334,28 @@ public class DashboardActivity extends Activity {
                 "View your saved running sessions",
                 BLUE,
                 () -> showMessage(
-                        "Running history will be connected when local workout storage is built."
+                        "Workout history will be connected when local storage is developed."
                 )
         );
+
+        addActionCard(
+                "RUNNING REPORTS",
+                "Review your detailed performance reports",
+                GOLD,
+                () -> showMessage(
+                        "Running reports will be developed in the reporting phase."
+                )
+        );
+
+        addActionCard(
+                "PERSONAL RECORDS",
+                "View your best performances",
+                GOLD,
+                () -> showPage("Records")
+        );
     }
+
+    // TRAINING
 
     private void showTraining() {
 
@@ -296,7 +371,7 @@ public class DashboardActivity extends Activity {
                 "Custom sprint and recovery intervals",
                 GOLD,
                 () -> showMessage(
-                        "The editable fartlek timer is coming in Step 13."
+                        "The configurable fartlek timer will be developed in Step 13."
                 )
         );
 
@@ -305,7 +380,7 @@ public class DashboardActivity extends Activity {
                 "Track laps, split times and distances",
                 BLUE,
                 () -> showMessage(
-                        "Track and field tools are coming in Steps 12 and 14."
+                        "Track and field tools will be developed in Steps 12 and 14."
                 )
         );
 
@@ -314,7 +389,16 @@ public class DashboardActivity extends Activity {
                 "Cross-country running and training",
                 GREEN,
                 () -> showMessage(
-                        "Cross-country tracking will be connected to GPS."
+                        "Cross-country tracking will connect to the GPS engine."
+                )
+        );
+
+        addActionCard(
+                "ROAD RUNNING",
+                "Road running and distance sessions",
+                BLUE,
+                () -> showMessage(
+                        "Road running tools will be connected to the GPS engine."
                 )
         );
 
@@ -337,6 +421,8 @@ public class DashboardActivity extends Activity {
         );
     }
 
+    // RECORDS
+
     private void showRecords() {
 
         pageHeading("PERSONAL RECORDS");
@@ -350,7 +436,7 @@ public class DashboardActivity extends Activity {
                 "800 METRES",
                 "1500 METRES",
                 "3000 METRES",
-                "5 KILOMETRES",
+                "5000 METRES",
                 "10 KILOMETRES",
                 "HALF MARATHON",
                 "MARATHON"
@@ -360,6 +446,8 @@ public class DashboardActivity extends Activity {
             addSimpleCard(event, "No recorded result yet");
         }
     }
+
+    // PROFILE
 
     private void showProfile() {
 
@@ -378,7 +466,6 @@ public class DashboardActivity extends Activity {
                 : "No email";
 
         addText(name, WHITE, 25, true);
-
         addText(email, GREY, 13, false);
 
         addSpace(20);
@@ -389,8 +476,8 @@ public class DashboardActivity extends Activity {
         );
 
         addActionCard(
-                "ACHIEVEMENTS",
-                "View medals and milestones",
+                "MY ACHIEVEMENTS",
+                "View your medals and milestones",
                 GOLD,
                 () -> showPage("Achievements")
         );
@@ -409,6 +496,8 @@ public class DashboardActivity extends Activity {
                 this::confirmLogout
         );
     }
+
+    // COMMUNITY
 
     private void showCommunity() {
 
@@ -440,6 +529,8 @@ public class DashboardActivity extends Activity {
         );
     }
 
+    // ACHIEVEMENTS
+
     private void showAchievements() {
 
         pageHeading("ACHIEVEMENTS");
@@ -469,6 +560,8 @@ public class DashboardActivity extends Activity {
                 "Beat one of your previous records."
         );
     }
+
+    // SETTINGS
 
     private void showSettings() {
 
@@ -503,7 +596,16 @@ public class DashboardActivity extends Activity {
                 "PRIVACY",
                 "Manage your data and privacy."
         );
+
+        addActionCard(
+                "LOG OUT",
+                "Sign out of your Q-BOIX account",
+                GREY,
+                this::confirmLogout
+        );
     }
+
+    // REUSABLE UI COMPONENTS
 
     private void pageHeading(String heading) {
 
@@ -515,7 +617,7 @@ public class DashboardActivity extends Activity {
 
     private void addSection(String heading) {
 
-        addSpace(25);
+        addSpace(22);
         addText(heading, GOLD, 13, true);
         addSpace(10);
     }
@@ -528,14 +630,20 @@ public class DashboardActivity extends Activity {
 
         LinearLayout card = new LinearLayout(this);
         card.setOrientation(LinearLayout.VERTICAL);
-        card.setPadding(dp(12), dp(18), dp(12), dp(18));
+        card.setGravity(Gravity.CENTER_VERTICAL);
+        card.setPadding(dp(13), dp(17), dp(13), dp(17));
         card.setBackground(background(CARD, 13));
 
-        TextView number = text(value, GOLD, 20, true);
+        TextView number = text(value, GOLD, 19, true);
         TextView title = text(label, GREY, 10, true);
 
         card.addView(number);
-        card.addView(title);
+
+        LinearLayout.LayoutParams titleParams =
+                new LinearLayout.LayoutParams(-1, -2);
+
+        titleParams.topMargin = dp(5);
+        card.addView(title, titleParams);
 
         LinearLayout.LayoutParams params =
                 new LinearLayout.LayoutParams(0, -2, 1);
@@ -556,6 +664,8 @@ public class DashboardActivity extends Activity {
         card.setOrientation(LinearLayout.VERTICAL);
         card.setPadding(dp(17), dp(16), dp(17), dp(16));
         card.setBackground(background(CARD, 14));
+        card.setClickable(true);
+        card.setFocusable(true);
 
         TextView heading = text(title, accent, 15, true);
         TextView detail = text(description, GREY, 12, false);
@@ -566,7 +676,6 @@ public class DashboardActivity extends Activity {
                 new LinearLayout.LayoutParams(-1, -2);
 
         detailParams.topMargin = dp(7);
-
         card.addView(detail, detailParams);
 
         LinearLayout.LayoutParams params =
@@ -650,7 +759,6 @@ public class DashboardActivity extends Activity {
                 new LinearLayout.LayoutParams(-1, -2);
 
         params.topMargin = dp(topMargin);
-
         parent.addView(child, params);
     }
 
@@ -658,8 +766,10 @@ public class DashboardActivity extends Activity {
 
         View space = new View(this);
 
-        mainLayout.addView(space,
-                new LinearLayout.LayoutParams(1, dp(size)));
+        mainLayout.addView(
+                space,
+                new LinearLayout.LayoutParams(1, dp(size))
+        );
     }
 
     private GradientDrawable background(
@@ -680,6 +790,8 @@ public class DashboardActivity extends Activity {
         return (int) (value * getResources()
                 .getDisplayMetrics().density + 0.5f);
     }
+
+    // ACCOUNT
 
     private void confirmLogout() {
 
@@ -719,4 +831,3 @@ public class DashboardActivity extends Activity {
         finish();
     }
 }
-\
