@@ -267,7 +267,13 @@ public class DashboardActivity extends Activity {
         addText("Welcome, " + name, GREY, 12, false);
     }
 
-    private void startGpsActivity(String activityType) {\n        Intent intent = new Intent(DashboardActivity.this, GpsRunActivity.class);\n        intent.putExtra("activity_type", activityType);\n        startActivity(intent);\n    }\n\n    private void addActivityMode(int iconRes, int sceneRes, String title, String subtitle, Runnable action) {
+    private void startGpsActivity(String activityType) {
+        Intent intent = new Intent(DashboardActivity.this, GpsRunActivity.class);
+        intent.putExtra("activity_type", activityType);
+        startActivity(intent);
+    }
+
+    private void addActivityMode(int iconRes, int sceneRes, String title, String subtitle, Runnable action) {
         FrameLayout card = new FrameLayout(this);
 
         GradientDrawable cardShape = background(Color.rgb(12, 18, 27), 22);
