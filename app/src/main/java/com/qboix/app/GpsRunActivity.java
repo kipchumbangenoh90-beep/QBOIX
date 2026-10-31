@@ -50,66 +50,130 @@ public class GpsRunActivity extends Activity {
 
     @Override public void onCreate(Bundle b){super.onCreate(b);activityType=getIntent().getStringExtra("activity_type");if(activityType==null)activityType="RUN";buildScreen();}
     private void buildScreen(){
-        FrameLayout root=new FrameLayout(this); root.setBackgroundColor(Color.rgb(35,36,43));
-        LinearLayout base=new LinearLayout(this);base.setOrientation(LinearLayout.VERTICAL);base.setBackgroundColor(Color.TRANSPARENT);
-        LinearLayout header=new LinearLayout(this);header.setGravity(Gravity.CENTER_VERTICAL);header.setPadding(dp(16),dp(8),dp(16),dp(8));
-        TextView brand=label("Q-BOIX",GOLD,20,true);header.addView(brand,new LinearLayout.LayoutParams(0,-2,1));
-        activityTitle=label("GPS "+activityType,Color.WHITE,18,true);header.addView(activityTitle);
-        base.addView(header,new LinearLayout.LayoutParams(-1,dp(48)));
-        mapFrame=new FrameLayout(this);mapFrame.setBackgroundColor(Color.WHITE);
-        fallback=new RouteCanvas(this);mapFrame.addView(fallback,new FrameLayout.LayoutParams(-1,-1));
-        mapWeb=new WebView(this);mapWeb.setBackgroundColor(Color.WHITE);mapWeb.getSettings().setJavaScriptEnabled(true);mapWeb.getSettings().setDomStorageEnabled(true);
+        FrameLayout root=new FrameLayout(this);
+        root.setBackgroundColor(Color.TRANSPARENT);
+
+        // The map fills the entire screen; floating controls sit above it.
+        mapFrame=new FrameLayout(this);
+        mapFrame.setBackgroundColor(Color.WHITE);
+        fallback=new RouteCanvas(this);
+        mapFrame.addView(fallback,new FrameLayout.LayoutParams(-1,-1));
+        mapWeb=new WebView(this);
+        mapWeb.setBackgroundColor(Color.WHITE);
+        mapWeb.getSettings().setJavaScriptEnabled(true);
+        mapWeb.getSettings().setDomStorageEnabled(true);
         mapWeb.setWebViewClient(new WebViewClient(){
-            @Override public void onPageFinished(WebView v,String u){mapWeb.setVisibility(View.VISIBLE);fallback.setVisibility(View.GONE);status.setText("Online map ready");}
-            @Override public void onReceivedError(WebView v,WebResourceRequest req,WebResourceError err){if(req.isForMainFrame()){mapWeb.setVisibility(View.GONE);fallback.setVisibility(View.VISIBLE);status.setText("Offline map • drawing GPS route");}}
+            @Override public void onPageFinished(WebView v,String u){
+                mapWeb.setVisibility(View.VISIBLE);
+                fallback.setVisibility(View.GONE);
+                if(status!=null)status.setText("Online map ready");
+            }
+            @Override public void onReceivedError(WebView v,WebResourceRequest req,WebResourceError err){
+                if(req.isForMainFrame()){
+                    mapWeb.setVisibility(View.GONE);
+                    fallback.setVisibility(View.VISIBLE);
+                    if(status!=null)status.setText("Offline map • drawing GPS route");
+                }
+            }
         });
         mapFrame.addView(mapWeb,new FrameLayout.LayoutParams(-1,-1));
-        mapWeb.setVisibility(View.INVISIBLE);fallback.setVisibility(View.VISIBLE);
+        mapWeb.setVisibility(View.INVISIBLE);
+        fallback.setVisibility(View.VISIBLE);
         mapWeb.loadDataWithBaseURL("https://qboix.local/",mapHtml(),"text/html","UTF-8",null);
-        base.addView(mapFrame,new LinearLayout.LayoutParams(-1,0,1));
-        LinearLayout live=new LinearLayout(this);live.setOrientation(LinearLayout.VERTICAL);live.setPadding(dp(12),dp(10),dp(12),dp(8));
+        root.addView(mapFrame,new FrameLayout.LayoutParams(-1,-1));
+
+        LinearLayout header=new LinearLayout(this);
+        header.setGravity(Gravity.CENTER_VERTICAL);
+        header.setPadding(dp(16),dp(8),dp(16),dp(8));
+        header.setBackgroundColor(0xEE09090D);
+        TextView brand=label("Q-BOIX",GOLD,20,true);
+        header.addView(brand,new LinearLayout.LayoutParams(0,-2,1));
+        activityTitle=label("GPS "+activityType,Color.WHITE,18,true);
+        header.addView(activityTitle);
+        FrameLayout.LayoutParams headerParams=new FrameLayout.LayoutParams(-1,dp(58),Gravity.TOP);
+        root.addView(header,headerParams);
+
+        LinearLayout live=new LinearLayout(this);
+        live.setOrientation(LinearLayout.VERTICAL);
+        live.setPadding(dp(12),dp(10),dp(12),dp(8));
         GradientDrawable livePanel=new GradientDrawable();
-        livePanel.setColor(0xEE09090D);
+        livePanel.setColor(0xF209090D);
         livePanel.setCornerRadius(dp(26));
         livePanel.setStroke(dp(1),0x337F6A35);
         live.setBackground(livePanel);
-        live.setElevation(dp(10));
-        status=label("Waiting for GPS",GREY,11,false);live.addView(status);
-        LinearLayout.LayoutParams liveParams=new LinearLayout.LayoutParams(-1,-2);
-        liveParams.setMargins(dp(14),dp(8),dp(14),dp(8));
-        LinearLayout row1=new LinearLayout(this);row1.setOrientation(LinearLayout.HORIZONTAL);
-        distance=metric(row1,"0.00","KM");time=metric(row1,"00:00","TIME");pace=metric(row1,"--:--","AVG PACE / KM");
+        live.setElevation(dp(12));
+        status=label("Waiting for GPS",GREY,11,false);
+        live.addView(status);
+        LinearLayout row1=new LinearLayout(this);
+        row1.setOrientation(LinearLayout.HORIZONTAL);
+        distance=metric(row1,"0.00","KM");
+        time=metric(row1,"00:00","TIME");
+        pace=metric(row1,"--:--","AVG PACE / KM");
         live.addView(row1,new LinearLayout.LayoutParams(-1,dp(76)));
-        LinearLayout row2=new LinearLayout(this);row2.setOrientation(LinearLayout.HORIZONTAL);
-        speed=metric(row2,"0.0","KM/H");calories=metric(row2,"0","KCAL");lapStatus=metric(row2,"0","LAPS");
+        LinearLayout row2=new LinearLayout(this);
+        row2.setOrientation(LinearLayout.HORIZONTAL);
+        speed=metric(row2,"0.0","KM/H");
+        calories=metric(row2,"0","KCAL");
+        lapStatus=metric(row2,"0","LAPS");
         live.addView(row2,new LinearLayout.LayoutParams(-1,dp(62)));
-        LinearLayout controls=new LinearLayout(this);controls.setOrientation(LinearLayout.HORIZONTAL);controls.setGravity(Gravity.CENTER);
-        start=button("START "+activityType,Color.rgb(55,190,125));pause=button("PAUSE",GOLD);finish=button("FINISH",Color.rgb(220,100,85));
-        pause.setEnabled(false);finish.setEnabled(false);
-        controls.addView(start,new LinearLayout.LayoutParams(0,dp(48),1));controls.addView(pause,new LinearLayout.LayoutParams(0,dp(48),1));controls.addView(finish,new LinearLayout.LayoutParams(0,dp(48),1));
-        live.addView(controls);base.addView(live,liveParams);
-        TextView swipe=label("⌃  SWIPE UP FOR WORKOUT SETTINGS",GOLD,11,true);swipe.setGravity(Gravity.CENTER);swipe.setPadding(0,dp(9),0,dp(8));base.addView(swipe);
-        root.addView(base,new FrameLayout.LayoutParams(-1,-1));
-        LinearLayout drawer=buildSettings();drawer.setVisibility(View.GONE);
+        LinearLayout controls=new LinearLayout(this);
+        controls.setOrientation(LinearLayout.HORIZONTAL);
+        controls.setGravity(Gravity.CENTER);
+        start=button("START "+activityType,Color.rgb(55,190,125));
+        pause=button("PAUSE",GOLD);
+        finish=button("FINISH",Color.rgb(220,100,85));
+        pause.setEnabled(false);
+        finish.setEnabled(false);
+        controls.addView(start,new LinearLayout.LayoutParams(0,dp(48),1));
+        controls.addView(pause,new LinearLayout.LayoutParams(0,dp(48),1));
+        controls.addView(finish,new LinearLayout.LayoutParams(0,dp(48),1));
+        live.addView(controls);
+        FrameLayout.LayoutParams liveParams=new FrameLayout.LayoutParams(-1,-2,Gravity.BOTTOM);
+        liveParams.setMargins(dp(14),0,dp(14),dp(48));
+        root.addView(live,liveParams);
+
+        TextView swipe=label("⌃  SWIPE UP FOR WORKOUT SETTINGS",GOLD,11,true);
+        swipe.setGravity(Gravity.CENTER);
+        swipe.setPadding(0,dp(5),0,dp(5));
+        FrameLayout.LayoutParams swipeParams=new FrameLayout.LayoutParams(-1,dp(38),Gravity.BOTTOM);
+        swipeParams.setMargins(dp(14),0,dp(14),dp(5));
+        root.addView(swipe,swipeParams);
+
+        LinearLayout drawer=buildSettings();
+        drawer.setVisibility(View.GONE);
         FrameLayout.LayoutParams drawerParams=new FrameLayout.LayoutParams(-1,dp(400),Gravity.BOTTOM);
         drawerParams.setMargins(dp(14),0,dp(14),dp(14));
         drawer.setElevation(dp(12));
         root.addView(drawer,drawerParams);
-        View dim=new View(this);dim.setBackgroundColor(0x99000000);dim.setVisibility(View.GONE);
-        root.addView(dim,new FrameLayout.LayoutParams(-1,-1));root.removeView(dim);root.addView(dim,new FrameLayout.LayoutParams(-1,-1));dim.setOnClickListener(v->{drawer.setVisibility(View.GONE);dim.setVisibility(View.GONE);settingsOpen=false;});
+        View dim=new View(this);
+        dim.setBackgroundColor(0x99000000);
+        dim.setVisibility(View.GONE);
+        root.addView(dim,new FrameLayout.LayoutParams(-1,-1));
+        dim.setOnClickListener(v->{
+            drawer.setVisibility(View.GONE);
+            dim.setVisibility(View.GONE);
+            settingsOpen=false;
+        });
         swipe.setOnClickListener(v->toggleSettings(drawer,dim));
-        View.OnTouchListener swipeGesture=new View.OnTouchListener(){float y;public boolean onTouch(View v,android.view.MotionEvent e){
-            if(e.getAction()==MotionEvent.ACTION_DOWN){y=e.getRawY();return true;}
-            if(e.getAction()==MotionEvent.ACTION_UP){float dy=e.getRawY()-y;
-                if(dy < -dp(35))toggleSettings(drawer,dim);
-                else if(dy>dp(35)&&settingsOpen)toggleSettings(drawer,dim);
+        View.OnTouchListener swipeGesture=new View.OnTouchListener(){
+            float y;
+            public boolean onTouch(View v,android.view.MotionEvent e){
+                if(e.getAction()==MotionEvent.ACTION_DOWN){y=e.getRawY();return true;}
+                if(e.getAction()==MotionEvent.ACTION_UP){
+                    float dy=e.getRawY()-y;
+                    if(dy < -dp(35))toggleSettings(drawer,dim);
+                    else if(dy>dp(35)&&settingsOpen)toggleSettings(drawer,dim);
+                    return true;
+                }
                 return true;
-            }return true;
-        }};
+            }
+        };
         live.setOnTouchListener(swipeGesture);
         status.setOnTouchListener(swipeGesture);
         swipe.setOnTouchListener(swipeGesture);
-        start.setOnClickListener(v->requestStart());pause.setOnClickListener(v->command(paused?GpsTrackingService.RESUME:GpsTrackingService.PAUSE));finish.setOnClickListener(v->command(GpsTrackingService.FINISH));
+        start.setOnClickListener(v->requestStart());
+        pause.setOnClickListener(v->command(paused?GpsTrackingService.RESUME:GpsTrackingService.PAUSE));
+        finish.setOnClickListener(v->command(GpsTrackingService.FINISH));
         setContentView(root);
     }
 
