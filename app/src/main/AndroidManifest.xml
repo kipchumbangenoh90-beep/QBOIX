@@ -4,6 +4,9 @@
  <uses-permission android:name="android.permission.VIBRATE"/>
  <uses-permission android:name="android.permission.ACCESS_FINE_LOCATION"/>
  <uses-permission android:name="android.permission.ACCESS_COARSE_LOCATION"/>
+ <uses-permission android:name="android.permission.FOREGROUND_SERVICE"/>
+ <uses-permission android:name="android.permission.FOREGROUND_SERVICE_LOCATION"/>
+ <uses-permission android:name="android.permission.POST_NOTIFICATIONS"/>
  <application android:label="Q-BOIX" android:icon="@mipmap/ic_launcher" android:roundIcon="@mipmap/ic_launcher" android:allowBackup="false" android:usesCleartextTraffic="false" android:theme="@android:style/Theme.Black.NoTitleBar.Fullscreen">
   <activity android:name=".MainActivity" android:exported="true"><intent-filter><action android:name="android.intent.action.MAIN"/><category android:name="android.intent.category.LAUNCHER"/></intent-filter></activity>
   <activity android:name=".LoginActivity" android:exported="false"/>
@@ -12,5 +15,6 @@
   <activity android:name=".FartlekActivity" android:exported="false"/>
   <activity android:name=".WorkoutHistoryActivity" android:exported="false"/>
   <activity android:name=".GpsRunActivity" android:exported="false"/>
+  <service android:name=".GpsTrackingService" android:exported="false" android:foregroundServiceType="location"/>
  </application>
 </manifest>
