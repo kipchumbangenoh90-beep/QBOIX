@@ -148,6 +148,10 @@ public class DashboardActivity extends Activity {
                 showProfile();
                 break;
 
+            case "Analytics":
+                startActivity(new Intent(DashboardActivity.this, PerformanceAnalyticsActivity.class));
+                break;
+
             case "Records":
                 showRecords();
                 break;
@@ -336,6 +340,13 @@ public class DashboardActivity extends Activity {
                 () -> startActivity(new Intent(
                         DashboardActivity.this, GpsRunActivity.class
                 ))
+        );
+
+        addActionCard(
+                "PERFORMANCE ANALYTICS",
+                "Charts, training totals, pace trends and GPS routes",
+                GOLD,
+                () -> startActivity(new Intent(DashboardActivity.this, PerformanceAnalyticsActivity.class))
         );
 
         addActionCard(
