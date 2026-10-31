@@ -6,6 +6,11 @@ import android.graphics.Color;
 import android.graphics.Typeface;
 import android.graphics.drawable.GradientDrawable;
 import android.os.Bundle;
+import android.os.Build;
+import android.os.VibrationEffect;
+import android.os.Vibrator;
+import android.speech.tts.TextToSpeech;
+import android.widget.CheckBox;
 import android.os.Handler;
 import android.os.Looper;
 import android.view.Gravity;
@@ -16,6 +21,11 @@ import android.widget.TextView;
 import android.widget.Toast;
 
 public class FartlekActivity extends Activity {
+    private TextToSpeech speech;
+    private boolean speechReady = false;
+    private boolean voiceEnabled = true;
+    private boolean vibrationEnabled = true;
+    private Vibrator vibrator;
     private final int GOLD = Color.rgb(215,181,91);
     private final int BLACK = Color.rgb(9,9,13);
     private final int CARD = Color.rgb(27,27,34);
@@ -40,6 +50,8 @@ public class FartlekActivity extends Activity {
                     recoveryPhase = true;
                     remainingSeconds = recoverySeconds;
                     phaseText.setText("RECOVERY • EASY JOG");
+                    announce("Cool down! Cool down!");
+                    cueVibration();
                 } else {
                     completedRepetitions++;
                     if (completedRepetitions >= targetRepetitions) {
@@ -49,7 +61,12 @@ public class FartlekActivity extends Activity {
                     recoveryPhase = false;
                     remainingSeconds = sprintSeconds;
                     phaseText.setText("SPRINT • RUN FAST");
+                    announce("Up!");
+                    cueVibration();
                 }
+            }
+            if (remainingSeconds > 0 && remainingSeconds <= 10) {
+                announce(Integer.toString(remainingSeconds));
             }
             updateDisplay();
             handler.postDelayed(this, 1000);
@@ -58,6 +75,13 @@ public class FartlekActivity extends Activity {
 
     @Override protected void onCreate(Bundle savedInstanceState) {
         super.onCreate(savedInstanceState);
+        voiceEnabled = getPreferences(MODE_PRIVATE).getBoolean("voice_enabled", true);
+        vibrationEnabled = getPreferences(MODE_PRIVATE).getBoolean("vibration_enabled", true);
+        vibrator = (Vibrator) getSystemService(VIBRATOR_SERVICE);
+        speech = new TextToSpeech(this, status -> {
+            speechReady = status == TextToSpeech.SUCCESS;
+            if (speechReady) speech.setLanguage(java.util.Locale.US);
+        });
         buildScreen();
     }
 
@@ -125,6 +149,30 @@ public class FartlekActivity extends Activity {
         root.addView(controls);
         pauseButton.setOnClickListener(v -> pauseWorkout());
         stopButton.setOnClickListener(v -> confirmStop());
+
+        LinearLayout feedback = new LinearLayout(this);
+        feedback.setOrientation(LinearLayout.HORIZONTAL);
+        CheckBox voiceToggle = new CheckBox(this);
+        voiceToggle.setText("Voice countdown");
+        voiceToggle.setTextColor(WHITE);
+        voiceToggle.setButtonTintList(android.content.res.ColorStateList.valueOf(GOLD));
+        voiceToggle.setChecked(voiceEnabled);
+        voiceToggle.setOnCheckedChangeListener((button, checked) -> {
+            voiceEnabled = checked;
+            getPreferences(MODE_PRIVATE).edit().putBoolean("voice_enabled", checked).apply();
+        });
+        CheckBox vibrationToggle = new CheckBox(this);
+        vibrationToggle.setText("Vibration");
+        vibrationToggle.setTextColor(WHITE);
+        vibrationToggle.setButtonTintList(android.content.res.ColorStateList.valueOf(GOLD));
+        vibrationToggle.setChecked(vibrationEnabled);
+        vibrationToggle.setOnCheckedChangeListener((button, checked) -> {
+            vibrationEnabled = checked;
+            getPreferences(MODE_PRIVATE).edit().putBoolean("vibration_enabled", checked).apply();
+        });
+        feedback.addView(voiceToggle, new LinearLayout.LayoutParams(0, dp(44), 1));
+        feedback.addView(vibrationToggle, new LinearLayout.LayoutParams(0, dp(44), 1));
+        root.addView(feedback);
 
         TextView note=label("Timer only • GPS distance and pace tracking will be added separately.",GREY,11,false);
         note.setGravity(Gravity.CENTER);
@@ -213,6 +261,21 @@ public class FartlekActivity extends Activity {
         Toast.makeText(this,"Fartlek workout saved on this device.",Toast.LENGTH_LONG).show();
     }
 
+    private void announce(String words) {
+        if (voiceEnabled && speech != null && speechReady) {
+            speech.speak(words, TextToSpeech.QUEUE_FLUSH, null, "qboix_fartlek_voice");
+        }
+    }
+
+    private void cueVibration() {
+        if (!vibrationEnabled || vibrator == null || !vibrator.hasVibrator()) return;
+        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O) {
+            vibrator.vibrate(VibrationEffect.createOneShot(250, VibrationEffect.DEFAULT_AMPLITUDE));
+        } else {
+            vibrator.vibrate(250);
+        }
+    }
+
     private void updateDisplay() {
         if(!running && completedRepetitions==0) {
             int s=readPreview(sprintInput,45);
@@ -258,6 +321,10 @@ public class FartlekActivity extends Activity {
     }
     @Override protected void onDestroy() {
         handler.removeCallbacks(ticker);
+        if (speech != null) {
+            speech.stop();
+            speech.shutdown();
+        }
         super.onDestroy();
     }
 }
