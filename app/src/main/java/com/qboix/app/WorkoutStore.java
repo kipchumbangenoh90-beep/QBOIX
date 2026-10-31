@@ -12,7 +12,7 @@ public final class WorkoutStore {
  private static JSONArray read(SharedPreferences p,String key){try{return new JSONArray(p.getString(key,"[]"));}catch(JSONException e){return new JSONArray();}}
  public static synchronized void saveFartlek(Context c,int sprint,int recovery,int reps,int elapsed){
   SharedPreferences p=c.getSharedPreferences(PREFS,Context.MODE_PRIVATE); JSONArray a=read(p,KEY_FARTLEK); JSONObject o=new JSONObject();
-  try{o.put("type","FARTLEK");o.put("savedAt",System.currentTimeMillis());o.put("sprintSeconds",sprint);o.put("recoverySeconds",recovery);o.put("repetitions",reps);o.put("elapsedSeconds",elapsed);a.put(o);p.edit().putString(KEY_FARTLEK,a.toString()).apply();}catch(JSONException ignored){}
+  try{o.put("type","FARTLEK");o.put("savedAt",System.currentTimeMillis());o.put("sprintSeconds",sprint);o.put("recoverySeconds",recovery);o.put("repetitions",reps);o.put("elapsedSeconds",elapsed);o.put("integrityVersion",1);o.put("integrityHash",hash(o));a.put(o);p.edit().putString(KEY_FARTLEK,a.toString()).apply();}catch(JSONException ignored){}
  }
  public static synchronized void saveRun(Context c,double metres,int elapsed,double pace,JSONArray route){saveRun(c,metres,elapsed,pace,route,new JSONArray(),false,400,0,new JSONArray());}
  public static synchronized void saveRun(Context c,double metres,int elapsed,double pace,JSONArray route,JSONArray laps,boolean trackMode,double trackLength,int lapCount,JSONArray distanceSplits){
