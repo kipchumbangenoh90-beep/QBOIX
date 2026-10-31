@@ -11,29 +11,23 @@
         android:usesCleartextTraffic="false"
         android:theme="@android:style/Theme.Black.NoTitleBar.Fullscreen">
 
-        <!-- Startup videos -->
         <activity
             android:name=".MainActivity"
             android:exported="true">
-
             <intent-filter>
                 <action android:name="android.intent.action.MAIN" />
                 <category android:name="android.intent.category.LAUNCHER" />
             </intent-filter>
-
         </activity>
 
-        <!-- Login -->
         <activity
             android:name=".LoginActivity"
             android:exported="false" />
 
-        <!-- Registration -->
         <activity
             android:name=".RegisterActivity"
             android:exported="false" />
 
-        <!-- Athlete dashboard -->
         <activity
             android:name=".DashboardActivity"
             android:exported="false" />
