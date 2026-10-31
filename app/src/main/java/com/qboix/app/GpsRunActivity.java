@@ -44,7 +44,17 @@ public class GpsRunActivity extends Activity implements LocationListener {
  }
  private void requestStart(){if(checkSelfPermission(Manifest.permission.ACCESS_FINE_LOCATION)!=PackageManager.PERMISSION_GRANTED){requestPermissions(new String[]{Manifest.permission.ACCESS_FINE_LOCATION,Manifest.permission.ACCESS_COARSE_LOCATION},41);return;}startRun();}
  @Override public void onRequestPermissionsResult(int r,String[] p,int[] g){super.onRequestPermissionsResult(r,p,g);if(r==41){if(g.length>0&&g[0]==PackageManager.PERMISSION_GRANTED)startRun();else status.setText("Location permission is required to record your run.");}}
+ private void resetRun(){
+  handler.removeCallbacks(ticker);
+  manager.removeUpdates(this);
+  points.clear(); previous=null; metres=0; pausedMs=0; pauseAt=0;
+  started=0; active=false; paused=false; saved=false;
+  distance.setText("0.00"); time.setText("00:00"); pace.setText("--:--");
+  start.setText("START RUN"); pause.setText("PAUSE");
+  pause.setEnabled(false); finish.setEnabled(false);
+ }
  private void startRun(){
+  if(saved)resetRun();
   try{if(!manager.isProviderEnabled(LocationManager.GPS_PROVIDER)){status.setText("Turn on Location/GPS, then tap START RUN.");return;}
    active=true;paused=false;started=SystemClock.elapsedRealtime();start.setEnabled(false);pause.setEnabled(true);finish.setEnabled(true);status.setText("Searching for GPS. Move outdoors for a clear signal.");
    manager.requestLocationUpdates(LocationManager.GPS_PROVIDER,1000,0,this,Looper.getMainLooper());Location last=manager.getLastKnownLocation(LocationManager.GPS_PROVIDER);if(last!=null)onLocationChanged(last);handler.post(ticker);
@@ -64,8 +74,8 @@ public class GpsRunActivity extends Activity implements LocationListener {
  }
  private void refresh(){long now=paused?pauseAt:SystemClock.elapsedRealtime();int sec=(int)Math.max(0,(now-started-pausedMs)/1000);distance.setText(String.format(Locale.getDefault(),"%.2f",metres/1000));time.setText(clock(sec));pace.setText(metres>=20?clock((int)(sec/(metres/1000))):"--:--");}
  private String clock(int s){return String.format(Locale.getDefault(),"%02d:%02d",s/60,s%60);}
- @Override protected void onPause(){super.onPause();if(active&&!paused){manager.removeUpdates(this);handler.removeCallbacks(ticker);status.setText("GPS paused while you leave this screen in this version.");}}
- @Override protected void onResume(){super.onResume();if(active&&!paused&&!saved){try{manager.requestLocationUpdates(LocationManager.GPS_PROVIDER,1000,0,this,Looper.getMainLooper());handler.post(ticker);}catch(SecurityException ignored){}}}
+ @Override protected void onPause(){super.onPause();if(active&&!paused){paused=true;pauseAt=SystemClock.elapsedRealtime();manager.removeUpdates(this);handler.removeCallbacks(ticker);pause.setText("RESUME");status.setText("Run paused while this screen is closed. Tap RESUME when you return.");}}
+ @Override protected void onResume(){super.onResume();if(active&&paused&&!saved){status.setText("Run paused. Tap RESUME to continue.");}else if(active&&!saved){try{manager.requestLocationUpdates(LocationManager.GPS_PROVIDER,1000,0,this,Looper.getMainLooper());handler.post(ticker);}catch(SecurityException ignored){}}}
  @Override protected void onDestroy(){manager.removeUpdates(this);handler.removeCallbacks(ticker);super.onDestroy();}
  private Button button(String t,int color){Button b=new Button(this);b.setText(t);b.setTextColor(Color.BLACK);b.setTypeface(Typeface.DEFAULT,Typeface.BOLD);b.setBackground(panel(color));return b;}
  private LinearLayout.LayoutParams buttonParams(){return new LinearLayout.LayoutParams(-1,dp(54));}
