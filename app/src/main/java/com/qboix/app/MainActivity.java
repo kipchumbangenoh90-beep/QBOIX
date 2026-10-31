@@ -11,8 +11,6 @@ import android.view.WindowManager;
 import android.widget.FrameLayout;
 import android.widget.VideoView;
 
-import com.google.firebase.auth.FirebaseAuth;
-import com.google.firebase.auth.FirebaseUser;
 
 import java.io.File;
 import java.io.FileOutputStream;
@@ -24,7 +22,6 @@ public class MainActivity extends Activity {
     private FrameLayout root;
     private VideoView video;
 
-    private FirebaseAuth auth;
 
     private boolean navigationStarted = false;
     private boolean activityDestroyed = false;
@@ -32,8 +29,6 @@ public class MainActivity extends Activity {
     @Override
     protected void onCreate(Bundle savedInstanceState) {
         super.onCreate(savedInstanceState);
-
-        auth = FirebaseAuth.getInstance();
 
         setupFullscreen();
         setupVideoScreen();
@@ -152,40 +147,8 @@ public class MainActivity extends Activity {
             video.stopPlayback();
         }
 
-        FirebaseUser user = auth.getCurrentUser();
-
-        if (user == null) {
-            openLogin();
-            return;
-        }
-
-        user.reload().addOnCompleteListener(this, task -> {
-
-            if (isFinishing() || isDestroyed()) {
-                return;
-            }
-
-            FirebaseUser refreshedUser = auth.getCurrentUser();
-
-            if (!task.isSuccessful()) {
-
-                // Network or server problem.
-                // Keep the existing session and open login.
-                openLogin();
-                return;
-            }
-
-            if (refreshedUser != null
-                    && refreshedUser.isEmailVerified()) {
-
-                openDashboard();
-
-            } else {
-
-                auth.signOut();
-                openLogin();
-            }
-        });
+        if (LocalAccountStore.isSignedIn(this)) openDashboard();
+        else openLogin();
     }
 
     private void openLogin() {
