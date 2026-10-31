@@ -32,6 +32,10 @@
             android:name=".DashboardActivity"
             android:exported="false" />
 
+        <activity
+            android:name=".FartlekActivity"
+            android:exported="false" />
+
     </application>
 
 </manifest>

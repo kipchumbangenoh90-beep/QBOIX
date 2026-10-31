@@ -379,9 +379,9 @@ public class DashboardActivity extends Activity {
                 "FARTLEK",
                 "Custom sprint and recovery intervals",
                 GOLD,
-                () -> showMessage(
-                        "The configurable fartlek timer will be developed in Step 13."
-                )
+                () -> startActivity(new Intent(
+                        DashboardActivity.this, FartlekActivity.class
+                ))
         );
 
         addActionCard(
