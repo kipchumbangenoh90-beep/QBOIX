@@ -28,12 +28,11 @@ public class DashboardActivity extends Activity {
     private String currentPage = "Home";
 
     private final String[] tabs = {
-            "Home", "Activities", "Training",
-            "Community", "Profile"
+            "Home", "Activity", "Training", "Maps", "You"
     };
 
     private final String[] icons = {
-            "⌂", "◉", "◷", "◎", "♙"
+            "⌂", "▥", "👟", "⌖", "♙"
     };
 
     @Override
@@ -124,7 +123,7 @@ public class DashboardActivity extends Activity {
                 showHome();
                 break;
 
-            case "Activities":
+            case "Activity":
                 showActivities();
                 break;
 
@@ -132,11 +131,11 @@ public class DashboardActivity extends Activity {
                 showTraining();
                 break;
 
-            case "Community":
-                showCommunity();
+            case "Maps":
+                showMaps();
                 break;
 
-            case "Profile":
+            case "You":
                 showProfile();
                 break;
 
@@ -184,127 +183,113 @@ public class DashboardActivity extends Activity {
     // HOME DASHBOARD
 
     private void showHome() {
-
+        mainLayout.setPadding(dp(16), dp(12), dp(16), dp(22));
         String name = LocalAccountStore.getName(this);
 
-        addText("Q-BOIX", GOLD, 29, true);
-        addText("DESIRE TO ACHIEVE", GREY, 10, true);
-
-        addSpace(28);
-
-        addText("WELCOME BACK,", GREY, 12, true);
-        addText(name, WHITE, 27, true);
-
-        addSpace(6);
-
-        addText(
-                "One vision. Many creations.",
-                GOLD, 13, true
-        );
-
-        addText(
-                "Your journey. Your performance. Your achievement.",
-                GREY, 12, false
-        );
-
-        addSpace(26);
-
-        addSection("TODAY'S PERFORMANCE");
-
-        LinearLayout stats = new LinearLayout(this);
-        stats.setOrientation(LinearLayout.HORIZONTAL);
-
-        addStat(stats, "0.00 km", "DISTANCE");
-        addStat(stats, "00:00", "DURATION");
-
-        addView(mainLayout, stats, 0);
-
-        LinearLayout stats2 = new LinearLayout(this);
-        stats2.setOrientation(LinearLayout.HORIZONTAL);
-
-        addStat(stats2, "--", "AVG PACE");
-        addStat(stats2, "0", "CALORIES");
-
-        addView(mainLayout, stats2, 8);
-
+        // Premium Q-BOIX top bar
+        LinearLayout top = new LinearLayout(this);
+        top.setGravity(Gravity.CENTER_VERTICAL);
+        top.setOrientation(LinearLayout.HORIZONTAL);
+        TextView brand = text("🏃  Q-BOIX", GOLD, 27, true);
+        brand.setLetterSpacing(0.04f);
+        top.addView(brand, new LinearLayout.LayoutParams(0, -2, 1));
+        TextView settings = text("⚙", GOLD, 27, true);
+        settings.setGravity(Gravity.CENTER);
+        settings.setPadding(dp(12), dp(5), dp(12), dp(5));
+        settings.setBackground(background(Color.rgb(22, 27, 38), 30));
+        settings.setOnClickListener(v -> showPage("Settings"));
+        top.addView(settings);
+        mainLayout.addView(top);
         addSpace(12);
 
-        addText(
-                "No recorded activities yet.",
-                GREY, 11, false
-        );
+        // Cinematic welcome hero with layered night-to-sunset gradient
+        LinearLayout hero = new LinearLayout(this);
+        hero.setOrientation(LinearLayout.VERTICAL);
+        hero.setGravity(Gravity.CENTER_VERTICAL);
+        hero.setPadding(dp(20), dp(25), dp(16), dp(25));
+        GradientDrawable heroBg = new GradientDrawable(
+                GradientDrawable.Orientation.TL_BR,
+                new int[]{Color.rgb(5, 16, 38), Color.rgb(20, 48, 91), Color.rgb(190, 100, 37), Color.rgb(8, 12, 22)});
+        heroBg.setCornerRadius(dp(24));
+        heroBg.setStroke(dp(1), Color.rgb(224, 170, 54));
+        hero.setBackground(heroBg);
+        TextView welcome = text("Welcome", WHITE, 34, true);
+        welcome.setTypeface(Typeface.create("sans-serif", Typeface.BOLD_ITALIC));
+        hero.addView(welcome);
+        TextView back = text("Back!", GOLD, 40, true);
+        back.setTypeface(Typeface.create("sans-serif", Typeface.BOLD_ITALIC));
+        hero.addView(back);
+        TextView greeting = text("Run. Jog. Walk.", Color.rgb(226, 231, 242), 19, false);
+        greeting.setTypeface(Typeface.create("sans-serif", Typeface.ITALIC));
+        LinearLayout.LayoutParams gp = new LinearLayout.LayoutParams(-1,-2);
+        gp.topMargin = dp(8);
+        hero.addView(greeting,gp);
+        TextView runner = text("🏃", WHITE, 54, true);
+        runner.setGravity(Gravity.RIGHT);
+        hero.addView(runner);
+        LinearLayout.LayoutParams hp = new LinearLayout.LayoutParams(-1, dp(245));
+        hp.bottomMargin = dp(18);
+        mainLayout.addView(hero,hp);
 
+        addActivityMode("🏃", "RUN", "Track your run with GPS", new int[]{Color.rgb(10,20,37),Color.rgb(28,58,91)}, () -> startActivity(new Intent(DashboardActivity.this, GpsRunActivity.class)));
+        addActivityMode("🚶", "JOG", "Build rhythm and endurance", new int[]{Color.rgb(25,30,42),Color.rgb(48,58,75)}, () -> startActivity(new Intent(DashboardActivity.this, GpsRunActivity.class)));
+        addActivityMode("🚶‍♂️", "WALK", "Record a relaxed walk", new int[]{Color.rgb(35,29,22),Color.rgb(83,62,38)}, () -> startActivity(new Intent(DashboardActivity.this, GpsRunActivity.class)));
         addSpace(18);
+        addText("YOUR PERFORMANCE", GOLD, 12, true);
+        addSpace(9);
+        LinearLayout stats = new LinearLayout(this);
+        stats.setOrientation(LinearLayout.HORIZONTAL);
+        addStat(stats, "0.00 km", "DISTANCE");
+        addStat(stats, "00:00", "DURATION");
+        addView(mainLayout, stats, 0);
+        LinearLayout stats2 = new LinearLayout(this);
+        stats2.setOrientation(LinearLayout.HORIZONTAL);
+        addStat(stats2, "0", "RUNS");
+        addStat(stats2, "0 kcal", "CALORIES");
+        addView(mainLayout, stats2, 8);
+        addSpace(16);
+        addText("Welcome, " + name, GREY, 12, false);
+    }
 
-        addSection("YOUR TRAINING");
+    private void addActivityMode(String symbol, String title, String subtitle, int[] colors, Runnable action) {
+        LinearLayout card = new LinearLayout(this);
+        card.setGravity(Gravity.CENTER_VERTICAL);
+        card.setOrientation(LinearLayout.HORIZONTAL);
+        card.setPadding(dp(16), dp(13), dp(14), dp(13));
+        GradientDrawable bg = new GradientDrawable(GradientDrawable.Orientation.LEFT_RIGHT, colors);
+        bg.setCornerRadius(dp(28));
+        bg.setStroke(dp(1), Color.rgb(205, 155, 51));
+        card.setBackground(bg);
+        TextView figure = text(symbol, GOLD, 37, true);
+        figure.setGravity(Gravity.CENTER);
+        card.addView(figure, new LinearLayout.LayoutParams(dp(68), dp(65)));
+        LinearLayout info = new LinearLayout(this);
+        info.setOrientation(LinearLayout.VERTICAL);
+        info.setPadding(dp(12), 0, dp(4), 0);
+        TextView heading = text(title, WHITE, 23, true);
+        heading.setTypeface(Typeface.create("sans-serif", Typeface.BOLD_ITALIC));
+        info.addView(heading);
+        info.addView(text(subtitle, GREY, 11, false));
+        card.addView(info, new LinearLayout.LayoutParams(0,-2,1));
+        TextView play = text("▶", GOLD, 22, true);
+        play.setGravity(Gravity.CENTER);
+        GradientDrawable playBg = new GradientDrawable();
+        playBg.setColor(Color.rgb(12,17,27));
+        playBg.setCornerRadius(dp(40));
+        playBg.setStroke(dp(2), GOLD);
+        play.setBackground(playBg);
+        card.addView(play, new LinearLayout.LayoutParams(dp(49),dp(49)));
+        card.setOnClickListener(v -> action.run());
+        LinearLayout.LayoutParams p = new LinearLayout.LayoutParams(-1,dp(91));
+        p.bottomMargin = dp(13);
+        mainLayout.addView(card,p);
+    }
 
-        addActionCard(
-                "START RUNNING",
-                "GPS running, distance, pace and route",
-                GREEN,
-                () -> showPage("Activities")
-        );
-
-        addActionCard(
-                "FARTLEK TRAINING",
-                "Build sprint and recovery intervals",
-                BLUE,
-                () -> showPage("Training")
-        );
-
-        addActionCard(
-                "TRAINING PLANS",
-                "Organise your running sessions",
-                GOLD,
-                () -> showPage("Training")
-        );
-
-        addSection("WEEKLY OVERVIEW");
-
-        LinearLayout weekly = new LinearLayout(this);
-        weekly.setOrientation(LinearLayout.HORIZONTAL);
-
-        addStat(weekly, "0", "RUNS");
-        addStat(weekly, "0.0 km", "DISTANCE");
-
-        addView(mainLayout, weekly, 0);
-
-        addSpace(8);
-
-        addText(
-                "Your weekly statistics will update when recorded workouts are connected.",
-                GREY, 11, false
-        );
-
-        addSection("YOUR ATHLETE SPACE");
-
-        addActionCard(
-                "PERSONAL RECORDS",
-                "Review your best running performances",
-                GOLD,
-                () -> showPage("Records")
-        );
-
-        addActionCard(
-                "ACHIEVEMENTS",
-                "Track your medals and milestones",
-                GOLD,
-                () -> showPage("Achievements")
-        );
-
-        addActionCard(
-                "Q-BOIX COMMUNITY",
-                "Connect with other athletes",
-                BLUE,
-                () -> showPage("Community")
-        );
-
-        addActionCard(
-                "SETTINGS",
-                "Manage your application preferences",
-                GREY,
-                () -> showPage("Settings")
-        );
+    private void showMaps() {
+        pageHeading("MAPS");
+        addText("Explore your routes and running locations.", GREY, 14, false);
+        addActionCard("GPS ROUTES", "View routes recorded during your runs", GOLD,
+                () -> startActivity(new Intent(DashboardActivity.this, PerformanceAnalyticsActivity.class)));
     }
 
     // ACTIVITIES
