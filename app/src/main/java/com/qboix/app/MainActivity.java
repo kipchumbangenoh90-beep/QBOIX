@@ -175,13 +175,9 @@ public class MainActivity extends Activity {
                 return;
             }
 
-            if (refreshedUser != null
-                    && refreshedUser.isEmailVerified()) {
-
+            if (refreshedUser != null) {
                 openDashboard();
-
             } else {
-
                 auth.signOut();
                 openLogin();
             }
