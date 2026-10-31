@@ -57,6 +57,15 @@ public class DashboardActivity extends Activity {
         showPage("Home");
     }
 
+    @Override
+    public void onBackPressed() {
+        if (!"Home".equals(currentPage)) {
+            showPage("Home");
+        } else {
+            super.onBackPressed();
+        }
+    }
+
     private void createApplicationLayout() {
 
         LinearLayout root = new LinearLayout(this);
