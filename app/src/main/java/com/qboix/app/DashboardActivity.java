@@ -247,9 +247,9 @@ public class DashboardActivity extends Activity {
         hp.bottomMargin = dp(18);
         mainLayout.addView(hero,hp);
 
-        addActivityMode(R.drawable.ic_mode_run, "RUN", "Track your run with GPS", new int[]{Color.rgb(10,20,37),Color.rgb(28,58,91)}, () -> startActivity(new Intent(DashboardActivity.this, GpsRunActivity.class)));
-        addActivityMode(R.drawable.ic_mode_jog, "JOG", "Build rhythm and endurance", new int[]{Color.rgb(25,30,42),Color.rgb(48,58,75)}, () -> startActivity(new Intent(DashboardActivity.this, GpsRunActivity.class)));
-        addActivityMode(R.drawable.ic_mode_walk, "WALK", "Record a relaxed walk", new int[]{Color.rgb(35,29,22),Color.rgb(83,62,38)}, () -> startActivity(new Intent(DashboardActivity.this, GpsRunActivity.class)));
+        addActivityMode(R.drawable.ic_mode_run, R.drawable.bg_mode_run, "RUN", "Track your run with GPS", () -> startActivity(new Intent(DashboardActivity.this, GpsRunActivity.class)));
+        addActivityMode(R.drawable.ic_mode_jog, R.drawable.bg_mode_jog, "JOG", "Build rhythm and endurance", () -> startActivity(new Intent(DashboardActivity.this, GpsRunActivity.class)));
+        addActivityMode(R.drawable.ic_mode_walk, R.drawable.bg_mode_walk, "WALK", "Record a relaxed walk", () -> startActivity(new Intent(DashboardActivity.this, GpsRunActivity.class)));
         addSpace(18);
         addText("YOUR PERFORMANCE", GOLD, 12, true);
         addSpace(9);
@@ -267,41 +267,53 @@ public class DashboardActivity extends Activity {
         addText("Welcome, " + name, GREY, 12, false);
     }
 
-    private void addActivityMode(int iconRes, String title, String subtitle, int[] colors, Runnable action) {
-        LinearLayout card = new LinearLayout(this);
-        card.setGravity(Gravity.CENTER_VERTICAL);
-        card.setOrientation(LinearLayout.HORIZONTAL);
-        card.setPadding(dp(16), dp(13), dp(14), dp(13));
-        GradientDrawable bg = new GradientDrawable(GradientDrawable.Orientation.LEFT_RIGHT, colors);
-        bg.setCornerRadius(dp(28));
-        bg.setStroke(dp(1), Color.rgb(205, 155, 51));
-        card.setBackground(bg);
+    private void addActivityMode(int iconRes, int sceneRes, String title, String subtitle, Runnable action) {
+        FrameLayout card = new FrameLayout(this);
+
+        GradientDrawable cardShape = background(Color.rgb(12, 18, 27), 22);
+        cardShape.setStroke(dp(1), Color.rgb(205, 155, 51));
+        card.setBackground(cardShape);
+        card.setClipToOutline(true);
+
+        ImageView scene = new ImageView(this);
+        scene.setImageResource(sceneRes);
+        scene.setScaleType(ImageView.ScaleType.CENTER_CROP);
+        card.addView(scene, new FrameLayout.LayoutParams(-1, -1));
+
+        View shade = new View(this);
+        shade.setBackground(new GradientDrawable(
+                GradientDrawable.Orientation.LEFT_RIGHT,
+                new int[]{Color.argb(205, 5, 10, 18), Color.argb(125, 5, 10, 18), Color.argb(35, 5, 10, 18)}));
+        card.addView(shade, new FrameLayout.LayoutParams(-1, -1));
+
+        LinearLayout content = new LinearLayout(this);
+        content.setGravity(Gravity.CENTER_VERTICAL);
+        content.setOrientation(LinearLayout.HORIZONTAL);
+        content.setPadding(dp(13), dp(9), dp(13), dp(9));
+
         ImageView figure = new ImageView(this);
         figure.setImageResource(iconRes);
         figure.setColorFilter(Color.rgb(255, 199, 75));
         figure.setScaleType(ImageView.ScaleType.FIT_CENTER);
-        figure.setElevation(dp(8));
-        card.addView(figure, new LinearLayout.LayoutParams(dp(58), dp(58)));
+        figure.setElevation(dp(4));
+        content.addView(figure, new LinearLayout.LayoutParams(dp(40), dp(40)));
+
         LinearLayout info = new LinearLayout(this);
         info.setOrientation(LinearLayout.VERTICAL);
-        info.setPadding(dp(12), 0, dp(4), 0);
-        TextView heading = text(title, WHITE, 23, true);
+        info.setPadding(dp(11), 0, dp(4), 0);
+
+        TextView heading = text(title, WHITE, 22, true);
         heading.setTypeface(Typeface.create("sans-serif", Typeface.BOLD_ITALIC));
         info.addView(heading);
-        info.addView(text(subtitle, GREY, 11, false));
-        card.addView(info, new LinearLayout.LayoutParams(0,-2,1));
-        TextView play = text("▶", Color.rgb(255, 216, 125), 20, true);
-        play.setGravity(Gravity.CENTER);
-        GradientDrawable playBg = new GradientDrawable();
-        playBg.setColor(Color.rgb(12,17,27));
-        playBg.setCornerRadius(dp(40));
-        playBg.setStroke(dp(2), GOLD);
-        play.setBackground(playBg);
-        card.addView(play, new LinearLayout.LayoutParams(dp(49),dp(49)));
+        info.addView(text(subtitle, Color.rgb(235, 235, 235), 11, false));
+        content.addView(info, new LinearLayout.LayoutParams(0, -2, 1));
+
+        card.addView(content, new FrameLayout.LayoutParams(-1, -1));
         card.setOnClickListener(v -> action.run());
-        LinearLayout.LayoutParams p = new LinearLayout.LayoutParams(-1,dp(91));
+
+        LinearLayout.LayoutParams p = new LinearLayout.LayoutParams(-1, dp(91));
         p.bottomMargin = dp(13);
-        mainLayout.addView(card,p);
+        mainLayout.addView(card, p);
     }
 
     private void showMaps() {
