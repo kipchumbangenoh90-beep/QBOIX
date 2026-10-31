@@ -89,11 +89,27 @@ public class DashboardActivity extends Activity {
                 -1, 0, 1
         ));
 
+        // Shared runner photograph spans the complete bottom tab bar.
+        // Every tab sits above the same image so the photo reads as one continuous strip.
+        FrameLayout navigationFrame = new FrameLayout(this);
+        navigationFrame.setBackground(background(Color.BLACK, 0));
+
+        ImageView navigationPhoto = new ImageView(this);
+        navigationPhoto.setImageResource(R.drawable.runner_split_photo);
+        navigationPhoto.setScaleType(ImageView.ScaleType.CENTER_CROP);
+        navigationFrame.addView(navigationPhoto,
+                new FrameLayout.LayoutParams(-1, -1));
+
+        View navigationShade = new View(this);
+        navigationShade.setBackgroundColor(Color.argb(178, 3, 5, 10));
+        navigationFrame.addView(navigationShade,
+                new FrameLayout.LayoutParams(-1, -1));
+
         navigation = new LinearLayout(this);
         navigation.setOrientation(LinearLayout.HORIZONTAL);
         navigation.setGravity(Gravity.CENTER);
         navigation.setPadding(dp(4), dp(7), dp(4), dp(7));
-        navigation.setBackgroundColor(Color.rgb(17, 17, 23));
+        navigation.setBackgroundColor(Color.TRANSPARENT);
 
         for (int i = 0; i < tabs.length; i++) {
 
@@ -123,9 +139,10 @@ public class DashboardActivity extends Activity {
             ));
         }
 
-        navigation.setBackground(background(Color.argb(220, 7, 8, 13), 24));
         navigation.setElevation(dp(18));
-        root.addView(navigation);
+        navigationFrame.addView(navigation,
+                new FrameLayout.LayoutParams(-1, -2, Gravity.BOTTOM));
+        root.addView(navigationFrame);
 
         frame.addView(root, new FrameLayout.LayoutParams(-1, -1));
         setContentView(frame);
