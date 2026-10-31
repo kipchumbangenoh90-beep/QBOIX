@@ -1,0 +1,48 @@
+{
+  "project_info": {
+    "project_number": "59778006124",
+    "project_id": "q-boix",
+    "storage_bucket": "q-boix.firebasestorage.app"
+  },
+  "client": [
+    {
+      "client_info": {
+        "mobilesdk_app_id": "1:59778006124:android:584fce9a822c1311616c49",
+        "android_client_info": {
+          "package_name": "Com.aapp.app"
+        }
+      },
+      "oauth_client": [],
+      "api_key": [
+        {
+          "current_key": "AIzaSyCfAXbyR23DU4l7duq-jGIlTjXYFC5mrjo"
+        }
+      ],
+      "services": {
+        "appinvite_service": {
+          "other_platform_oauth_client": []
+        }
+      }
+    },
+    {
+      "client_info": {
+        "mobilesdk_app_id": "1:59778006124:android:9d7bf4aad86d0d14616c49",
+        "android_client_info": {
+          "package_name": "com.qboix.app"
+        }
+      },
+      "oauth_client": [],
+      "api_key": [
+        {
+          "current_key": "AIzaSyCfAXbyR23DU4l7duq-jGIlTjXYFC5mrjo"
+        }
+      ],
+      "services": {
+        "appinvite_service": {
+          "other_platform_oauth_client": []
+        }
+      }
+    }
+  ],
+  "configuration_version": "1"
+}
