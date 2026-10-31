@@ -339,12 +339,12 @@ public class DashboardActivity extends Activity {
         );
 
         addActionCard(
-                "RUNNING HISTORY",
-                "View your saved running sessions",
+                "WORKOUT HISTORY",
+                "View completed Fartlek sessions saved on this phone",
                 BLUE,
-                () -> showMessage(
-                        "Workout history will be connected when local storage is developed."
-                )
+                () -> startActivity(new Intent(
+                        DashboardActivity.this, WorkoutHistoryActivity.class
+                ))
         );
 
         addActionCard(
