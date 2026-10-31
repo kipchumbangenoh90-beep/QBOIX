@@ -1,0 +1,197 @@
+<?xml version="1.0" encoding="utf-8"?>
+<FrameLayout
+    xmlns:android="http://schemas.android.com/apk/res/android"
+    android:layout_width="match_parent"
+    android:layout_height="match_parent"
+    android:background="#08090D">
+
+    <ImageView
+        android:layout_width="match_parent"
+        android:layout_height="match_parent"
+        android:src="@drawable/bg_login"
+        android:scaleType="centerCrop"
+        android:contentDescription="@string/login_background"/>
+
+    <View
+        android:layout_width="match_parent"
+        android:layout_height="match_parent"
+        android:background="#33000000"/>
+
+    <ScrollView
+        android:layout_width="match_parent"
+        android:layout_height="match_parent"
+        android:fillViewport="true"
+        android:scrollbars="none">
+
+        <LinearLayout
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:orientation="vertical"
+            android:gravity="center_horizontal"
+            android:padding="24dp">
+
+            <TextView
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:layout_marginTop="45dp"
+                android:text="Join Q-BOIX"
+                android:textColor="#FFFFFF"
+                android:textSize="36sp"
+                android:textStyle="bold"
+                android:gravity="center"/>
+
+            <TextView
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:layout_marginTop="10dp"
+                android:text="Create your account and begin your journey"
+                android:textColor="#E6E6E6"
+                android:textSize="14sp"
+                android:gravity="center"/>
+
+            <View
+                android:layout_width="110dp"
+                android:layout_height="3dp"
+                android:layout_marginTop="22dp"
+                android:layout_marginBottom="30dp"
+                android:background="@drawable/accent_line"/>
+
+            <EditText
+                android:id="@+id/fullNameEditText"
+                android:layout_width="match_parent"
+                android:layout_height="62dp"
+                android:background="@drawable/login_input_bg"
+                android:paddingStart="20dp"
+                android:paddingEnd="18dp"
+                android:hint="Full Name"
+                android:textColor="#FFFFFF"
+                android:textColorHint="#F0F0F0"
+                android:textSize="16sp"
+                android:singleLine="true"
+                android:inputType="textPersonName"/>
+
+            <EditText
+                android:id="@+id/registerEmailEditText"
+                android:layout_width="match_parent"
+                android:layout_height="62dp"
+                android:layout_marginTop="20dp"
+                android:background="@drawable/login_input_bg"
+                android:paddingStart="20dp"
+                android:paddingEnd="18dp"
+                android:hint="Email Address"
+                android:textColor="#FFFFFF"
+                android:textColorHint="#F0F0F0"
+                android:textSize="16sp"
+                android:singleLine="true"
+                android:inputType="textEmailAddress"/>
+
+            <EditText
+                android:id="@+id/registerPasswordEditText"
+                android:layout_width="match_parent"
+                android:layout_height="62dp"
+                android:layout_marginTop="20dp"
+                android:background="@drawable/login_input_bg"
+                android:paddingStart="20dp"
+                android:paddingEnd="18dp"
+                android:padding="18dp"
+                android:hint="Create Password"
+                android:textColor="#FFFFFF"
+                android:textColorHint="#F0F0F0"
+                android:textSize="16sp"
+                android:singleLine="true"
+                android:inputType="textPassword"/>
+
+            <EditText
+                android:id="@+id/confirmPasswordEditText"
+                android:layout_width="match_parent"
+                android:layout_height="62dp"
+                android:layout_marginTop="20dp"
+                android:background="@drawable/login_input_bg"
+                android:paddingStart="20dp"
+                android:paddingEnd="18dp"
+                android:hint="Confirm Password"
+                android:textColor="#FFFFFF"
+                android:textColorHint="#F0F0F0"
+                android:textSize="16sp"
+                android:singleLine="true"
+                android:inputType="textPassword"/>
+
+            <CheckBox
+                android:id="@+id/termsCheckBox"
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:layout_marginTop="22dp"
+                android:buttonTint="#D7B55B"
+                android:text="I agree to the Q-BOIX Terms and Privacy Policy"
+                android:textColor="#FFFFFF"
+                android:textSize="13sp"/>
+
+            <Button
+                android:id="@+id/createAccountButton"
+                android:layout_width="match_parent"
+                android:layout_height="66dp"
+                android:layout_marginTop="28dp"
+                android:background="@drawable/button_gold_bg"
+                android:backgroundTint="@null"
+                android:text="Create Account  →"
+                android:textAllCaps="false"
+                android:textColor="#17120A"
+                android:textSize="18sp"
+                android:textStyle="bold"/>
+
+            <LinearLayout
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:layout_marginTop="28dp"
+                android:gravity="center"
+                android:orientation="horizontal">
+
+                <TextView
+                    android:layout_width="wrap_content"
+                    android:layout_height="wrap_content"
+                    android:text="Already have an account?"
+                    android:textColor="#FFFFFF"
+                    android:textSize="14sp"/>
+
+                <TextView
+                    android:id="@+id/backToLoginText"
+                    android:layout_width="wrap_content"
+                    android:layout_height="wrap_content"
+                    android:padding="10dp"
+                    android:text="Log In"
+                    android:textColor="#F2C45E"
+                    android:textSize="14sp"
+                    android:textStyle="bold"
+                    android:clickable="true"
+                    android:focusable="true"/>
+            </LinearLayout>
+
+            <TextView
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:layout_marginTop="45dp"
+                android:text="Kipchumba"
+                android:textColor="#F2C45E"
+                android:textSize="32sp"
+                android:textStyle="italic"/>
+
+            <View
+                android:layout_width="65dp"
+                android:layout_height="2dp"
+                android:layout_marginTop="8dp"
+                android:background="#D7B55B"/>
+
+            <TextView
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:layout_marginTop="12dp"
+                android:layout_marginBottom="20dp"
+                android:letterSpacing="0.35"
+                android:text="K I P C H U M B A"
+                android:textColor="#F2C45E"
+                android:textSize="10sp"/>
+
+        </LinearLayout>
+    </ScrollView>
+
+</FrameLayout>
