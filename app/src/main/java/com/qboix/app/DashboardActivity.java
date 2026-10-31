@@ -5,6 +5,8 @@ import android.content.Intent;
 import android.graphics.Color;
 import android.graphics.Typeface;
 import android.graphics.drawable.GradientDrawable;
+import android.widget.FrameLayout;
+import android.widget.ImageView;
 import android.os.Bundle;
 import android.view.Gravity;
 import android.view.View;
@@ -31,8 +33,10 @@ public class DashboardActivity extends Activity {
             "Home", "Activity", "Training", "Maps", "You"
     };
 
-    private final String[] icons = {
-            "⌂", "▥", "👟", "⌖", "♙"
+    private final int[] icons = {
+            R.drawable.ic_nav_home, R.drawable.ic_nav_activity,
+            R.drawable.ic_nav_training, R.drawable.ic_nav_maps,
+            R.drawable.ic_nav_you
     };
 
     @Override
@@ -59,16 +63,24 @@ public class DashboardActivity extends Activity {
 
     private void createApplicationLayout() {
 
+        FrameLayout frame = new FrameLayout(this);
+        ImageView wallpaper = new ImageView(this);
+        wallpaper.setImageResource(R.drawable.home_runner_bg);
+        wallpaper.setScaleType(ImageView.ScaleType.CENTER_CROP);
+        frame.addView(wallpaper, new FrameLayout.LayoutParams(-1, -1));
+
         LinearLayout root = new LinearLayout(this);
         root.setOrientation(LinearLayout.VERTICAL);
-        root.setBackgroundColor(BLACK);
+        root.setBackgroundColor(Color.TRANSPARENT);
 
         ScrollView scroll = new ScrollView(this);
         scroll.setFillViewport(true);
         scroll.setVerticalScrollBarEnabled(false);
+        scroll.setBackgroundColor(Color.TRANSPARENT);
 
         mainLayout = new LinearLayout(this);
         mainLayout.setOrientation(LinearLayout.VERTICAL);
+        mainLayout.setBackgroundColor(Color.TRANSPARENT);
         mainLayout.setPadding(dp(20), dp(24), dp(20), dp(30));
 
         scroll.addView(mainLayout);
@@ -92,13 +104,16 @@ public class DashboardActivity extends Activity {
             item.setGravity(Gravity.CENTER);
             item.setPadding(dp(2), dp(7), dp(2), dp(7));
 
-            TextView icon = text(icons[i], GOLD, 21, true);
-            icon.setGravity(Gravity.CENTER);
+            ImageView icon = new ImageView(this);
+            icon.setImageResource(icons[i]);
+            icon.setColorFilter(GOLD);
+            icon.setScaleType(ImageView.ScaleType.FIT_CENTER);
+            LinearLayout.LayoutParams iconParams = new LinearLayout.LayoutParams(dp(27), dp(27));
+            item.addView(icon, iconParams);
 
             TextView label = text(tabs[i], GREY, 10, true);
             label.setGravity(Gravity.CENTER);
 
-            item.addView(icon);
             item.addView(label);
 
             item.setOnClickListener(v -> showPage(page));
@@ -108,9 +123,12 @@ public class DashboardActivity extends Activity {
             ));
         }
 
+        navigation.setBackground(background(Color.argb(220, 7, 8, 13), 24));
+        navigation.setElevation(dp(18));
         root.addView(navigation);
 
-        setContentView(root);
+        frame.addView(root, new FrameLayout.LayoutParams(-1, -1));
+        setContentView(frame);
     }
 
     private void showPage(String page) {
@@ -168,11 +186,11 @@ public class DashboardActivity extends Activity {
 
             boolean selected = tabs[i].equals(currentPage);
 
-            TextView icon = (TextView) item.getChildAt(0);
+            ImageView icon = (ImageView) item.getChildAt(0);
             TextView label = (TextView) item.getChildAt(1);
 
-            icon.setTextColor(selected ? GOLD : GREY);
-            label.setTextColor(selected ? GOLD : GREY);
+            icon.setColorFilter(selected ? Color.rgb(255, 211, 104) : Color.rgb(181, 145, 67));
+            label.setTextColor(selected ? Color.rgb(255, 218, 130) : GREY);
 
             item.setBackground(selected
                     ? background(Color.rgb(38, 34, 25), 10)
@@ -190,7 +208,7 @@ public class DashboardActivity extends Activity {
         LinearLayout top = new LinearLayout(this);
         top.setGravity(Gravity.CENTER_VERTICAL);
         top.setOrientation(LinearLayout.HORIZONTAL);
-        TextView brand = text("🏃  Q-BOIX", GOLD, 27, true);
+        TextView brand = text("Q-BOIX", GOLD, 27, true);
         brand.setLetterSpacing(0.04f);
         top.addView(brand, new LinearLayout.LayoutParams(0, -2, 1));
         TextView settings = text("⚙", GOLD, 27, true);
@@ -224,16 +242,14 @@ public class DashboardActivity extends Activity {
         LinearLayout.LayoutParams gp = new LinearLayout.LayoutParams(-1,-2);
         gp.topMargin = dp(8);
         hero.addView(greeting,gp);
-        TextView runner = text("🏃", WHITE, 54, true);
-        runner.setGravity(Gravity.RIGHT);
-        hero.addView(runner);
+        hero.setBackgroundColor(Color.argb(40, 0, 0, 0));
         LinearLayout.LayoutParams hp = new LinearLayout.LayoutParams(-1, dp(245));
         hp.bottomMargin = dp(18);
         mainLayout.addView(hero,hp);
 
-        addActivityMode("🏃", "RUN", "Track your run with GPS", new int[]{Color.rgb(10,20,37),Color.rgb(28,58,91)}, () -> startActivity(new Intent(DashboardActivity.this, GpsRunActivity.class)));
-        addActivityMode("🚶", "JOG", "Build rhythm and endurance", new int[]{Color.rgb(25,30,42),Color.rgb(48,58,75)}, () -> startActivity(new Intent(DashboardActivity.this, GpsRunActivity.class)));
-        addActivityMode("🚶‍♂️", "WALK", "Record a relaxed walk", new int[]{Color.rgb(35,29,22),Color.rgb(83,62,38)}, () -> startActivity(new Intent(DashboardActivity.this, GpsRunActivity.class)));
+        addActivityMode(R.drawable.ic_mode_run, "RUN", "Track your run with GPS", new int[]{Color.rgb(10,20,37),Color.rgb(28,58,91)}, () -> startActivity(new Intent(DashboardActivity.this, GpsRunActivity.class)));
+        addActivityMode(R.drawable.ic_mode_jog, "JOG", "Build rhythm and endurance", new int[]{Color.rgb(25,30,42),Color.rgb(48,58,75)}, () -> startActivity(new Intent(DashboardActivity.this, GpsRunActivity.class)));
+        addActivityMode(R.drawable.ic_mode_walk, "WALK", "Record a relaxed walk", new int[]{Color.rgb(35,29,22),Color.rgb(83,62,38)}, () -> startActivity(new Intent(DashboardActivity.this, GpsRunActivity.class)));
         addSpace(18);
         addText("YOUR PERFORMANCE", GOLD, 12, true);
         addSpace(9);
@@ -251,7 +267,7 @@ public class DashboardActivity extends Activity {
         addText("Welcome, " + name, GREY, 12, false);
     }
 
-    private void addActivityMode(String symbol, String title, String subtitle, int[] colors, Runnable action) {
+    private void addActivityMode(int iconRes, String title, String subtitle, int[] colors, Runnable action) {
         LinearLayout card = new LinearLayout(this);
         card.setGravity(Gravity.CENTER_VERTICAL);
         card.setOrientation(LinearLayout.HORIZONTAL);
@@ -260,9 +276,12 @@ public class DashboardActivity extends Activity {
         bg.setCornerRadius(dp(28));
         bg.setStroke(dp(1), Color.rgb(205, 155, 51));
         card.setBackground(bg);
-        TextView figure = text(symbol, GOLD, 37, true);
-        figure.setGravity(Gravity.CENTER);
-        card.addView(figure, new LinearLayout.LayoutParams(dp(68), dp(65)));
+        ImageView figure = new ImageView(this);
+        figure.setImageResource(iconRes);
+        figure.setColorFilter(Color.rgb(255, 199, 75));
+        figure.setScaleType(ImageView.ScaleType.FIT_CENTER);
+        figure.setElevation(dp(8));
+        card.addView(figure, new LinearLayout.LayoutParams(dp(58), dp(58)));
         LinearLayout info = new LinearLayout(this);
         info.setOrientation(LinearLayout.VERTICAL);
         info.setPadding(dp(12), 0, dp(4), 0);
@@ -271,7 +290,7 @@ public class DashboardActivity extends Activity {
         info.addView(heading);
         info.addView(text(subtitle, GREY, 11, false));
         card.addView(info, new LinearLayout.LayoutParams(0,-2,1));
-        TextView play = text("▶", GOLD, 22, true);
+        TextView play = text("▶", Color.rgb(255, 216, 125), 20, true);
         play.setGravity(Gravity.CENTER);
         GradientDrawable playBg = new GradientDrawable();
         playBg.setColor(Color.rgb(12,17,27));
