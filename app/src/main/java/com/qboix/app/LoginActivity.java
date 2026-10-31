@@ -101,14 +101,9 @@ public class LoginActivity extends Activity {
 
             FirebaseUser refreshedUser = auth.getCurrentUser();
 
-            if (task.isSuccessful()
-                    && refreshedUser != null
-                    && refreshedUser.isEmailVerified()) {
-
+            if (task.isSuccessful() && refreshedUser != null) {
                 openDashboard();
-
             } else if (task.isSuccessful()) {
-
                 auth.signOut();
             }
         });
@@ -228,51 +223,23 @@ public class LoginActivity extends Activity {
                             return;
                         }
 
-                        if (refreshedUser != null
-                                && refreshedUser.isEmailVerified()) {
-
-                            saveRememberedEmail(email);
-
-                            Toast.makeText(
-                                    this,
-                                    "Welcome to Q-BOIX!",
-                                    Toast.LENGTH_SHORT
-                            ).show();
-
-                            openDashboard();
-
-                        } else {
-
-                            sendVerificationAndSignOut(user);
+                        if (refreshedUser == null) {
+                            auth.signOut();
+                            resetLoginButton();
+                            showMessage("Unable to load your account.");
+                            return;
                         }
+
+                        saveRememberedEmail(email);
+
+                        Toast.makeText(
+                                this,
+                                "Welcome to Q-BOIX!",
+                                Toast.LENGTH_SHORT
+                        ).show();
+
+                        openDashboard();
                     });
-                });
-    }
-
-    private void sendVerificationAndSignOut(FirebaseUser user) {
-
-        user.sendEmailVerification()
-                .addOnCompleteListener(this, task -> {
-
-                    if (isFinishing() || isDestroyed()) {
-                        return;
-                    }
-
-                    auth.signOut();
-                    resetLoginButton();
-
-                    if (task.isSuccessful()) {
-
-                        showMessage(
-                                "Your email is not verified yet. We have sent you another verification link. Check your inbox and spam folder."
-                        );
-
-                    } else {
-
-                        showMessage(
-                                "Your email is not verified. Please check your inbox for the verification link and try again."
-                        );
-                    }
                 });
     }
 
