@@ -12,9 +12,10 @@ public final class WorkoutStore {
   SharedPreferences p=c.getSharedPreferences(PREFS,Context.MODE_PRIVATE); JSONArray a=read(p,KEY_FARTLEK); JSONObject o=new JSONObject();
   try{o.put("type","FARTLEK");o.put("savedAt",System.currentTimeMillis());o.put("sprintSeconds",sprint);o.put("recoverySeconds",recovery);o.put("repetitions",reps);o.put("elapsedSeconds",elapsed);a.put(o);p.edit().putString(KEY_FARTLEK,a.toString()).apply();}catch(JSONException ignored){}
  }
- public static synchronized void saveRun(Context c,double metres,int elapsed,double pace,JSONArray route){
+ public static synchronized void saveRun(Context c,double metres,int elapsed,double pace,JSONArray route){saveRun(c,metres,elapsed,pace,route,new JSONArray(),false,400,0);}
+ public static synchronized void saveRun(Context c,double metres,int elapsed,double pace,JSONArray route,JSONArray laps,boolean trackMode,double trackLength,int lapCount){
   SharedPreferences p=c.getSharedPreferences(PREFS,Context.MODE_PRIVATE);JSONArray a=read(p,KEY_RUNS);JSONObject o=new JSONObject();
-  try{o.put("type","RUN");o.put("savedAt",System.currentTimeMillis());o.put("distanceMeters",metres);o.put("elapsedSeconds",elapsed);o.put("averagePaceSecondsPerKm",pace);o.put("route",route==null?new JSONArray():route);a.put(o);p.edit().putString(KEY_RUNS,a.toString()).apply();}catch(JSONException ignored){}
+  try{o.put("type","RUN");o.put("savedAt",System.currentTimeMillis());o.put("distanceMeters",metres);o.put("elapsedSeconds",elapsed);o.put("averagePaceSecondsPerKm",pace);o.put("route",route==null?new JSONArray():route);o.put("trackMode",trackMode);o.put("trackLengthMeters",trackLength);o.put("lapCount",lapCount);o.put("lapSplits",laps==null?new JSONArray():laps);a.put(o);p.edit().putString(KEY_RUNS,a.toString()).apply();}catch(JSONException ignored){}
  }
  public static JSONArray getFartlekSessions(Context c){return read(c.getSharedPreferences(PREFS,Context.MODE_PRIVATE),KEY_FARTLEK);}
  public static JSONArray getRunSessions(Context c){return read(c.getSharedPreferences(PREFS,Context.MODE_PRIVATE),KEY_RUNS);}
