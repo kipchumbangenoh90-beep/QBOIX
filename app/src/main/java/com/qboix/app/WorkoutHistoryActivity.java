@@ -90,6 +90,7 @@ public class WorkoutHistoryActivity extends Activity {
                 LinearLayout.LayoutParams cp=new LinearLayout.LayoutParams(-1,-2);
                 cp.topMargin=dp(11); list.addView(card,cp);
                 card.addView(text("FARTLEK SESSION",GOLD,14,true));
+                TextView integrity=text(WorkoutStore.verifyRun(item)?"RECORD CHECK: VERIFIED":"RECORD CHECK: UNVERIFIED / LEGACY",WorkoutStore.verifyRun(item)?Color.rgb(75,190,130):GREY,11,true);LinearLayout.LayoutParams integrityP=new LinearLayout.LayoutParams(-1,-2);integrityP.topMargin=dp(5);card.addView(integrity,integrityP);
                 TextView dateText=text(date,GREY,11,false);
                 LinearLayout.LayoutParams dateP=new LinearLayout.LayoutParams(-1,-2);
                 dateP.topMargin=dp(5); card.addView(dateText,dateP);
