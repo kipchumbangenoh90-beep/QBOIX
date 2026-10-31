@@ -1,7 +1,6 @@
 package com.qboix.app;
 
 import android.app.Activity;
-import android.app.AlertDialog;
 import android.content.Intent;
 import android.graphics.Color;
 import android.graphics.Typeface;
@@ -13,18 +12,23 @@ import android.widget.Button;
 import android.widget.LinearLayout;
 import android.widget.ScrollView;
 import android.widget.TextView;
-import android.widget.Toast;
 
 import com.google.firebase.auth.FirebaseAuth;
 import com.google.firebase.auth.FirebaseUser;
 
 public class DashboardActivity extends Activity {
 
-    private static final int GOLD = Color.rgb(215, 181, 91);
-    private static final int BLACK = Color.rgb(9, 9, 13);
-    private static final int CARD = Color.rgb(27, 27, 34);
-    private static final int WHITE = Color.WHITE;
-    private static final int GREY = Color.rgb(165, 165, 175);
+    private final int GOLD = Color.rgb(215, 181, 91);
+    private final int BLACK = Color.rgb(9, 9, 13);
+    private final int CARD = Color.rgb(27, 27, 34);
+    private final int WHITE = Color.WHITE;
+    private final int GREY = Color.rgb(165, 165, 175);
+    private final int BLUE = Color.rgb(52, 136, 255);
+    private final int GREEN = Color.rgb(55, 190, 125);
+
+    private LinearLayout mainLayout;
+    private LinearLayout navigation;
+    private String currentPage = "Home";
 
     private FirebaseAuth auth;
 
@@ -42,302 +46,582 @@ public class DashboardActivity extends Activity {
             return;
         }
 
-        buildDashboard(user);
+        createApplicationLayout();
+        showPage("Home");
     }
 
-    private void buildDashboard(FirebaseUser user) {
+    private void createApplicationLayout() {
 
-        ScrollView scrollView = new ScrollView(this);
-        scrollView.setFillViewport(true);
-        scrollView.setBackgroundColor(BLACK);
+        LinearLayout root = new LinearLayout(this);
+        root.setOrientation(LinearLayout.VERTICAL);
+        root.setBackgroundColor(BLACK);
 
-        LinearLayout mainLayout = new LinearLayout(this);
+        ScrollView scroll = new ScrollView(this);
+        scroll.setFillViewport(true);
+
+        mainLayout = new LinearLayout(this);
         mainLayout.setOrientation(LinearLayout.VERTICAL);
-        mainLayout.setPadding(dp(22), dp(28), dp(22), dp(30));
+        mainLayout.setPadding(dp(20), dp(24), dp(20), dp(30));
 
-        scrollView.addView(mainLayout);
+        scroll.addView(mainLayout);
 
-        // BRAND HEADER
+        root.addView(scroll, new LinearLayout.LayoutParams(
+                -1, 0, 1
+        ));
 
-        TextView brand = new TextView(this);
-        brand.setText("Q-BOIX");
-        brand.setTextColor(GOLD);
-        brand.setTextSize(29);
-        brand.setTypeface(Typeface.DEFAULT_BOLD);
-        brand.setLetterSpacing(0.12f);
+        navigation = new LinearLayout(this);
+        navigation.setOrientation(LinearLayout.HORIZONTAL);
+        navigation.setGravity(Gravity.CENTER);
+        navigation.setPadding(dp(4), dp(8), dp(4), dp(8));
+        navigation.setBackgroundColor(Color.rgb(17, 17, 23));
 
-        mainLayout.addView(brand);
+        String[] tabs = {
+                "Home", "Activities", "Training",
+                "Community", "Profile"
+        };
 
-        TextView tagline = new TextView(this);
-        tagline.setText("DESIRE TO ACHIEVE");
-        tagline.setTextColor(GREY);
-        tagline.setTextSize(10);
-        tagline.setLetterSpacing(0.22f);
+        String[] icons = {
+                "⌂", "◉", "◷", "◎", "♙"
+        };
 
-        addView(mainLayout, tagline, 0, 12);
+        for (int i = 0; i < tabs.length; i++) {
 
-        // WELCOME SECTION
+            final String page = tabs[i];
 
-        TextView welcome = new TextView(this);
+            LinearLayout item = new LinearLayout(this);
+            item.setOrientation(LinearLayout.VERTICAL);
+            item.setGravity(Gravity.CENTER);
+            item.setPadding(dp(2), dp(7), dp(2), dp(7));
 
-        String name = user.getDisplayName();
+            TextView icon = text(
+                    icons[i],
+                    GOLD,
+                    21,
+                    true
+            );
 
-        if (name == null || name.trim().isEmpty()) {
-            name = "Athlete";
+            icon.setGravity(Gravity.CENTER);
+
+            TextView label = text(
+                    tabs[i],
+                    GREY,
+                    10,
+                    true
+            );
+
+            label.setGravity(Gravity.CENTER);
+
+            item.addView(icon);
+            item.addView(label);
+
+            item.setOnClickListener(v -> showPage(page));
+
+            navigation.addView(item, new LinearLayout.LayoutParams(
+                    0, -2, 1
+            ));
         }
 
-        welcome.setText("Welcome, " + name);
-        welcome.setTextColor(WHITE);
-        welcome.setTextSize(25);
-        welcome.setTypeface(Typeface.DEFAULT_BOLD);
+        root.addView(navigation);
 
-        addView(mainLayout, welcome, 0, 38);
+        setContentView(root);
+    }
 
-        TextView introduction = new TextView(this);
-        introduction.setText(
-                "Your journey. Your performance. Your achievement."
+    private void showPage(String page) {
+
+        currentPage = page;
+
+        mainLayout.removeAllViews();
+
+        switch (page) {
+
+            case "Home":
+                showHome();
+                break;
+
+            case "Activities":
+                showActivities();
+                break;
+
+            case "Training":
+                showTraining();
+                break;
+
+            case "Community":
+                showCommunity();
+                break;
+
+            case "Profile":
+                showProfile();
+                break;
+
+            case "Records":
+                showRecords();
+                break;
+
+            case "Achievements":
+                showAchievements();
+                break;
+
+            case "Settings":
+                showSettings();
+                break;
+        }
+    }
+
+    private void showHome() {
+
+        FirebaseUser user = auth.getCurrentUser();
+
+        String name = "Athlete";
+
+        if (user != null && user.getDisplayName() != null
+                && !user.getDisplayName().trim().isEmpty()) {
+            name = user.getDisplayName();
+        }
+
+        addText("Q-BOIX", GOLD, 29, true);
+        addText("DESIRE TO ACHIEVE", GREY, 10, true);
+
+        addSpace(28);
+
+        addText("Welcome back,", GREY, 15, false);
+        addText(name, WHITE, 27, true);
+
+        addText(
+                "Your journey. Your performance. Your achievement.",
+                GREY, 12, false
         );
-        introduction.setTextColor(GREY);
-        introduction.setTextSize(13);
 
-        addView(mainLayout, introduction, 0, 8);
+        addSpace(25);
 
-        // PROFILE CARD
+        addText("TODAY'S PERFORMANCE", GOLD, 13, true);
 
-        LinearLayout profileCard = createCard();
+        LinearLayout stats = new LinearLayout(this);
+        stats.setOrientation(LinearLayout.HORIZONTAL);
 
-        TextView profileTitle = createText(
-                "ATHLETE PROFILE",
+        addStat(stats, "0.00 km", "DISTANCE");
+        addStat(stats, "00:00", "DURATION");
+
+        addView(mainLayout, stats, 16);
+
+        LinearLayout stats2 = new LinearLayout(this);
+        stats2.setOrientation(LinearLayout.HORIZONTAL);
+
+        addStat(stats2, "0:00/km", "AVG PACE");
+        addStat(stats2, "0", "CALORIES");
+
+        addView(mainLayout, stats2, 10);
+
+        addSpace(25);
+
+        addActionCard(
+                "START RUNNING",
+                "Record a GPS running activity",
+                GREEN,
+                () -> showPage("Activities")
+        );
+
+        addActionCard(
+                "FARTLEK TRAINING",
+                "Create sprint and recovery intervals",
+                BLUE,
+                () -> showPage("Training")
+        );
+
+        addSection("YOUR ATHLETE SPACE");
+
+        addActionCard(
+                "PERSONAL RECORDS",
+                "View your running performance",
                 GOLD,
-                11,
-                true
+                () -> showPage("Records")
         );
 
-        profileTitle.setLetterSpacing(0.12f);
-
-        profileCard.addView(profileTitle);
-
-        TextView email = createText(
-                user.getEmail() == null ? "No email available" : user.getEmail(),
-                WHITE,
-                15,
-                false
-        );
-
-        addView(profileCard, email, 0, 12);
-
-        TextView accountStatus = createText(
-                "EMAIL VERIFIED  ✓",
+        addActionCard(
+                "ACHIEVEMENTS",
+                "Your medals and milestones",
                 GOLD,
-                11,
-                true
+                () -> showPage("Achievements")
         );
 
-        addView(profileCard, accountStatus, 0, 10);
-
-        addCard(mainLayout, profileCard, 28);
-
-        // TRAINING SECTION
-
-        addSectionTitle(mainLayout, "YOUR ATHLETE SPACE");
-
-        addFeatureCard(
-                mainLayout,
-                "01",
-                "RUNNING",
-                "Track your runs, distance, pace and routes.",
-                "GPS RUN TRACKING"
-        );
-
-        addFeatureCard(
-                mainLayout,
-                "02",
-                "TRAINING",
-                "Create workouts, intervals and fartlek sessions.",
-                "WORKOUT PLANNER"
-        );
-
-        addFeatureCard(
-                mainLayout,
-                "03",
-                "PERFORMANCE",
-                "Follow your personal records and training progress.",
-                "ATHLETE ANALYTICS"
-        );
-
-        addFeatureCard(
-                mainLayout,
-                "04",
-                "COMMUNITY",
-                "Connect with other athletes and share achievements.",
-                "ATHLETE NETWORK"
-        );
-
-        // ACCOUNT SECTION
-
-        addSectionTitle(mainLayout, "ACCOUNT");
-
-        Button logoutButton = new Button(this);
-
-        logoutButton.setText("LOG OUT");
-        logoutButton.setTextColor(BLACK);
-        logoutButton.setTextSize(14);
-        logoutButton.setTypeface(Typeface.DEFAULT_BOLD);
-        logoutButton.setAllCaps(false);
-        logoutButton.setBackground(createBackground(GOLD, 12));
-
-        LinearLayout.LayoutParams logoutParams =
-                new LinearLayout.LayoutParams(
-                        LinearLayout.LayoutParams.MATCH_PARENT,
-                        dp(54)
-                );
-
-        logoutParams.topMargin = dp(12);
-
-        mainLayout.addView(logoutButton, logoutParams);
-
-        logoutButton.setOnClickListener(v -> confirmLogout());
-
-        TextView footer = createText(
-                "Q-BOIX  •  ONE VISION. MANY CREATIONS.",
+        addActionCard(
+                "SETTINGS",
+                "Manage your application",
                 GREY,
-                10,
-                true
+                () -> showPage("Settings")
         );
-
-        footer.setGravity(Gravity.CENTER);
-        footer.setLetterSpacing(0.08f);
-
-        addView(mainLayout, footer, 0, 28);
-
-        setContentView(scrollView);
     }
 
-    private void addSectionTitle(
-            LinearLayout parent,
-            String title
-    ) {
+    private void showActivities() {
 
-        TextView heading = createText(
-                title,
-                GOLD,
-                13,
-                true
+        pageHeading("ACTIVITIES");
+
+        addText(
+                "Your running and workout history will appear here.",
+                GREY, 14, false
         );
 
-        heading.setLetterSpacing(0.12f);
+        addSpace(20);
 
-        addView(parent, heading, 0, 30);
+        addActionCard(
+                "START GPS RUN",
+                "Record distance, pace, time and route",
+                GREEN,
+                () -> showMessage(
+                        "GPS running will be implemented in Step 9."
+                )
+        );
+
+        addActionCard(
+                "RUNNING HISTORY",
+                "View your saved running sessions",
+                BLUE,
+                () -> showMessage(
+                        "Running history will be connected when local workout storage is built."
+                )
+        );
     }
 
-    private void addFeatureCard(
-            LinearLayout parent,
-            String number,
-            String title,
-            String description,
-            String category
-    ) {
+    private void showTraining() {
 
-        LinearLayout card = createCard();
+        pageHeading("TRAINING CENTRE");
 
-        TextView numberText = createText(
-                number,
+        addText(
+                "Choose the type of training you want to perform.",
+                GREY, 13, false
+        );
+
+        addActionCard(
+                "FARTLEK",
+                "Custom sprint and recovery intervals",
                 GOLD,
-                12,
-                true
+                () -> showMessage(
+                        "The editable fartlek timer is coming in Step 13."
+                )
         );
 
-        card.addView(numberText);
-
-        TextView titleText = createText(
-                title,
-                WHITE,
-                19,
-                true
+        addActionCard(
+                "TRACK AND FIELD",
+                "Track laps, split times and distances",
+                BLUE,
+                () -> showMessage(
+                        "Track and field tools are coming in Steps 12 and 14."
+                )
         );
 
-        addView(card, titleText, 0, 10);
+        addActionCard(
+                "CROSS-COUNTRY",
+                "Cross-country running and training",
+                GREEN,
+                () -> showMessage(
+                        "Cross-country tracking will be connected to GPS."
+                )
+        );
 
-        TextView descriptionText = createText(
-                description,
+        addActionCard(
+                "MARATHON TRAINING",
+                "Long-distance training sessions",
+                GOLD,
+                () -> showMessage(
+                        "Marathon training will be developed in Step 14."
+                )
+        );
+
+        addActionCard(
+                "CUSTOM WORKOUT",
+                "Create your own training session",
                 GREY,
-                13,
-                false
+                () -> showMessage(
+                        "Custom workouts will be added to the training system."
+                )
         );
-
-        addView(card, descriptionText, 0, 7);
-
-        TextView categoryText = createText(
-                category + "  •  COMING SOON",
-                GOLD,
-                10,
-                true
-        );
-
-        addView(card, categoryText, 0, 14);
-
-        addCard(parent, card, 13);
     }
 
-    private LinearLayout createCard() {
+    private void showRecords() {
+
+        pageHeading("PERSONAL RECORDS");
+
+        addText(
+                "Your best performances and progress.",
+                GREY, 14, false
+        );
+
+        String[] events = {
+                "800 METRES",
+                "1500 METRES",
+                "3000 METRES",
+                "5 KILOMETRES",
+                "10 KILOMETRES",
+                "HALF MARATHON",
+                "MARATHON"
+        };
+
+        for (String event : events) {
+            addSimpleCard(event, "No recorded result yet");
+        }
+    }
+
+    private void showProfile() {
+
+        FirebaseUser user = auth.getCurrentUser();
+
+        pageHeading("ATHLETE PROFILE");
+
+        String name = user != null
+                && user.getDisplayName() != null
+                ? user.getDisplayName()
+                : "Athlete";
+
+        String email = user != null
+                && user.getEmail() != null
+                ? user.getEmail()
+                : "No email";
+
+        addText(name, WHITE, 25, true);
+
+        addText(email, GREY, 13, false);
+
+        addSpace(20);
+
+        addSimpleCard(
+                "ACCOUNT STATUS",
+                "Email verified"
+        );
+
+        addActionCard(
+                "ACHIEVEMENTS",
+                "View medals and milestones",
+                GOLD,
+                () -> showPage("Achievements")
+        );
+
+        addActionCard(
+                "SETTINGS",
+                "Manage account and preferences",
+                BLUE,
+                () -> showPage("Settings")
+        );
+
+        addActionCard(
+                "LOG OUT",
+                "Sign out of Q-BOIX",
+                GREY,
+                this::confirmLogout
+        );
+    }
+
+    private void showCommunity() {
+
+        pageHeading("Q-BOIX COMMUNITY");
+
+        addText(
+                "Connect with athletes and share your journey.",
+                GREY, 14, false
+        );
+
+        addSimpleCard(
+                "ATHLETE NETWORK",
+                "Athlete connections will appear here."
+        );
+
+        addSimpleCard(
+                "RUNNING CLUBS",
+                "Discover and join running groups."
+        );
+
+        addSimpleCard(
+                "CHALLENGES",
+                "Compete in athlete challenges."
+        );
+
+        addSimpleCard(
+                "SHARED ACTIVITIES",
+                "Discover activities from other runners."
+        );
+    }
+
+    private void showAchievements() {
+
+        pageHeading("ACHIEVEMENTS");
+
+        addText(
+                "Every achievement starts with one step.",
+                GREY, 14, false
+        );
+
+        addSimpleCard(
+                "FIRST RUN",
+                "Record your first running activity."
+        );
+
+        addSimpleCard(
+                "10 KM MILESTONE",
+                "Complete 10 kilometres."
+        );
+
+        addSimpleCard(
+                "CONSISTENCY",
+                "Build your training streak."
+        );
+
+        addSimpleCard(
+                "PERSONAL BEST",
+                "Beat one of your previous records."
+        );
+    }
+
+    private void showSettings() {
+
+        pageHeading("SETTINGS");
+
+        addSimpleCard(
+                "ACCOUNT",
+                "Account and security settings."
+        );
+
+        addSimpleCard(
+                "UNITS",
+                "Kilometres and miles."
+        );
+
+        addSimpleCard(
+                "NOTIFICATIONS",
+                "Training reminders and alerts."
+        );
+
+        addSimpleCard(
+                "GPS SETTINGS",
+                "Location and tracking preferences."
+        );
+
+        addSimpleCard(
+                "OFFLINE MODE",
+                "Local workout storage and synchronization."
+        );
+
+        addSimpleCard(
+                "PRIVACY",
+                "Manage your data and privacy."
+        );
+    }
+
+    private void pageHeading(String heading) {
+
+        addText("Q-BOIX", GOLD, 25, true);
+        addSpace(22);
+        addText(heading, WHITE, 23, true);
+        addSpace(8);
+    }
+
+    private void addSection(String heading) {
+
+        addSpace(25);
+        addText(heading, GOLD, 13, true);
+        addSpace(10);
+    }
+
+    private void addStat(
+            LinearLayout parent,
+            String value,
+            String label
+    ) {
 
         LinearLayout card = new LinearLayout(this);
-
         card.setOrientation(LinearLayout.VERTICAL);
+        card.setPadding(dp(12), dp(18), dp(12), dp(18));
+        card.setBackground(background(CARD, 13));
 
-        card.setPadding(
-                dp(18),
-                dp(18),
-                dp(18),
-                dp(18)
-        );
+        TextView number = text(value, GOLD, 20, true);
+        TextView title = text(label, GREY, 10, true);
 
-        card.setBackground(
-                createBackground(CARD, 16)
-        );
-
-        return card;
-    }
-
-    private void addCard(
-            LinearLayout parent,
-            View card,
-            int topMargin
-    ) {
+        card.addView(number);
+        card.addView(title);
 
         LinearLayout.LayoutParams params =
-                new LinearLayout.LayoutParams(
-                        LinearLayout.LayoutParams.MATCH_PARENT,
-                        LinearLayout.LayoutParams.WRAP_CONTENT
-                );
+                new LinearLayout.LayoutParams(0, -2, 1);
 
-        params.topMargin = dp(topMargin);
+        params.setMargins(dp(4), dp(4), dp(4), dp(4));
 
         parent.addView(card, params);
     }
 
-    private void addView(
-            LinearLayout parent,
-            View child,
-            int horizontalMargin,
-            int topMargin
+    private void addActionCard(
+            String title,
+            String description,
+            int accent,
+            Runnable action
     ) {
 
+        LinearLayout card = new LinearLayout(this);
+        card.setOrientation(LinearLayout.VERTICAL);
+        card.setPadding(dp(17), dp(16), dp(17), dp(16));
+        card.setBackground(background(CARD, 14));
+
+        TextView heading = text(title, accent, 15, true);
+        TextView detail = text(description, GREY, 12, false);
+
+        card.addView(heading);
+
+        LinearLayout.LayoutParams detailParams =
+                new LinearLayout.LayoutParams(-1, -2);
+
+        detailParams.topMargin = dp(7);
+
+        card.addView(detail, detailParams);
+
         LinearLayout.LayoutParams params =
-                new LinearLayout.LayoutParams(
-                        LinearLayout.LayoutParams.MATCH_PARENT,
-                        LinearLayout.LayoutParams.WRAP_CONTENT
-                );
+                new LinearLayout.LayoutParams(-1, -2);
 
-        params.leftMargin = dp(horizontalMargin);
-        params.rightMargin = dp(horizontalMargin);
-        params.topMargin = dp(topMargin);
+        params.topMargin = dp(11);
 
-        parent.addView(child, params);
+        mainLayout.addView(card, params);
+
+        card.setOnClickListener(v -> action.run());
     }
 
-    private TextView createText(
-            String text,
+    private void addSimpleCard(
+            String title,
+            String description
+    ) {
+
+        LinearLayout card = new LinearLayout(this);
+        card.setOrientation(LinearLayout.VERTICAL);
+        card.setPadding(dp(16), dp(16), dp(16), dp(16));
+        card.setBackground(background(CARD, 13));
+
+        card.addView(text(title, GOLD, 14, true));
+
+        LinearLayout.LayoutParams detailParams =
+                new LinearLayout.LayoutParams(-1, -2);
+
+        detailParams.topMargin = dp(7);
+
+        card.addView(
+                text(description, GREY, 12, false),
+                detailParams
+        );
+
+        LinearLayout.LayoutParams params =
+                new LinearLayout.LayoutParams(-1, -2);
+
+        params.topMargin = dp(10);
+
+        mainLayout.addView(card, params);
+    }
+
+    private void addText(
+            String value,
+            int color,
+            float size,
+            boolean bold
+    ) {
+
+        TextView view = text(value, color, size, bold);
+        mainLayout.addView(view);
+    }
+
+    private TextView text(
+            String value,
             int color,
             float size,
             boolean bold
@@ -345,7 +629,7 @@ public class DashboardActivity extends Activity {
 
         TextView view = new TextView(this);
 
-        view.setText(text);
+        view.setText(value);
         view.setTextColor(color);
         view.setTextSize(size);
 
@@ -356,7 +640,29 @@ public class DashboardActivity extends Activity {
         return view;
     }
 
-    private GradientDrawable createBackground(
+    private void addView(
+            LinearLayout parent,
+            View child,
+            int topMargin
+    ) {
+
+        LinearLayout.LayoutParams params =
+                new LinearLayout.LayoutParams(-1, -2);
+
+        params.topMargin = dp(topMargin);
+
+        parent.addView(child, params);
+    }
+
+    private void addSpace(int size) {
+
+        View space = new View(this);
+
+        mainLayout.addView(space,
+                new LinearLayout.LayoutParams(1, dp(size)));
+    }
+
+    private GradientDrawable background(
             int color,
             int radius
     ) {
@@ -377,24 +683,23 @@ public class DashboardActivity extends Activity {
 
     private void confirmLogout() {
 
-        new AlertDialog.Builder(this)
+        new android.app.AlertDialog.Builder(this)
                 .setTitle("Log out of Q-BOIX?")
-                .setMessage(
-                        "Are you sure you want to end your current session?"
-                )
+                .setMessage("Are you sure you want to log out?")
                 .setNegativeButton("Cancel", null)
                 .setPositiveButton("Log Out", (dialog, which) -> {
-
                     auth.signOut();
-
-                    Toast.makeText(
-                            this,
-                            "You have logged out.",
-                            Toast.LENGTH_SHORT
-                    ).show();
-
                     openLogin();
                 })
+                .show();
+    }
+
+    private void showMessage(String message) {
+
+        new android.app.AlertDialog.Builder(this)
+                .setTitle("Q-BOIX")
+                .setMessage(message)
+                .setPositiveButton("OK", null)
                 .show();
     }
 
@@ -414,3 +719,4 @@ public class DashboardActivity extends Activity {
         finish();
     }
 }
+\
