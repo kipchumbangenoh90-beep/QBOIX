@@ -33,7 +33,7 @@ public class WatchActivity extends Activity {
     private BluetoothLeScanner scanner;
     private BluetoothGatt gatt;
     private LinearLayout root,deviceList;
-    private TextView status,watchName,heart,oxygen,steps,calories,battery,diagnostic;
+    private TextView status,watchName,heart,oxygen,steps,calories,battery,diagnostic;\n    private TextView heartState,oxygenState,stepsState,caloriesState;
     private Button scanButton;
     private final Map<String,BluetoothDevice> found=new ConcurrentHashMap<>();
     private final Handler handler=new Handler(Looper.getMainLooper());
@@ -206,7 +206,7 @@ public class WatchActivity extends Activity {
         @Override public void onServicesDiscovered(BluetoothGatt source,int result){
             if(result!=BluetoothGatt.GATT_SUCCESS){runOnUiThread(()->diagnostic.setText("Could not read watch services (error "+result+")."));return;}
             int serviceCount=source.getServices().size();
-            runOnUiThread(()->{setStatus("Connected • "+serviceCount+" data services checked.");diagnostic.setText("Checking standard live heart-rate, oxygen and battery measurements. Unsupported data will be marked unavailable.");});
+            runOnUiThread(()->{setStatus("CONNECTED • "+serviceCount+" Bluetooth services discovered. Health readings are checked separately.");diagnostic.setText("A connection or discovered service does not mean health data has arrived. Each measurement below shows its own receive status.");});
             readBattery(source);
             enableHeartRate(source);
             enableOxygen(source);
@@ -243,7 +243,7 @@ public class WatchActivity extends Activity {
     }
     private void enableOxygen(BluetoothGatt source){
         BluetoothGattService service=source.getService(PULSE_OX_SERVICE);
-        if(service==null){runOnUiThread(()->oxygen.setText("N/A"));return;}
+        if(service==null){runOnUiThread(()->{oxygen.setText("N/A");setMetricState(oxygenState,"NOT PROVIDED BY WATCH");});return;}
         BluetoothGattCharacteristic continuous=service.getCharacteristic(PULSE_OX_CONTINUOUS);
         BluetoothGattCharacteristic spot=service.getCharacteristic(PULSE_OX_SPOT);
         BluetoothGattCharacteristic c=continuous!=null?continuous:spot;
@@ -269,26 +269,26 @@ public class WatchActivity extends Activity {
         if(source.getService(PULSE_OX_SERVICE)==null)runOnUiThread(()->oxygen.setText("N/A"));
         // Steps and calories use manufacturer-specific GloryFit data on many watches.
         // Never display a fabricated value; wait for a supported decoder.
-        runOnUiThread(()->{steps.setText("N/A");calories.setText("N/A");});
+        runOnUiThread(()->{steps.setText("N/A");calories.setText("N/A");setMetricState(stepsState,"GLORYFIT DATA NOT DECODED");setMetricState(caloriesState,"GLORYFIT DATA NOT DECODED");});
     }
 
     private void handleMeasurement(BluetoothGattCharacteristic c,byte[] data){
         if(data==null||data.length==0)return;
         UUID id=c.getUuid();
         if(HR_MEASURE.equals(id))parseHeartRate(data);
-        else if(BATTERY_LEVEL.equals(id)){int level=data[0]&255;runOnUiThread(()->battery.setText("BATTERY  •  "+level+"%"));}
+        else if(BATTERY_LEVEL.equals(id)){int level=data[0]&255;runOnUiThread(()->battery.setText("BATTERY  •  "+level+"%  •  RECEIVED FROM WATCH"));}
         else if(PULSE_OX_CONTINUOUS.equals(id)||PULSE_OX_SPOT.equals(id)){
             // IEEE-11073 SFLOAT is used by the standard Pulse Oximeter service.
             // Do not mislabel unsupported/invalid values as a saturation percentage.
             if(data.length>=3){int flags=data[0]&255;int raw=(data[1]&255)|((data[2]&255)<<8);double spo2=decodeSfloat(raw);
-                if((flags&0x01)==0&&spo2>=0&&spo2<=100)runOnUiThread(()->oxygen.setText(String.format(Locale.US,"%.0f%%",spo2)));}
+                if((flags&0x01)==0&&spo2>=0&&spo2<=100)runOnUiThread(()->{oxygen.setText(String.format(Locale.US,"%.0f%%",spo2));setMetricState(oxygenState,"DATA RECEIVED FROM WATCH");});}
         }
     }
     private void parseHeartRate(byte[] data){
         if(data.length<2)return;int flags=data[0]&255;
         if((flags&1)!=0&&data.length<3)return;
         int bpm=(flags&1)==0?(data[1]&255):((data[2]&255)<<8)|(data[1]&255);
-        if(bpm>0&&bpm<260)runOnUiThread(()->heart.setText(String.valueOf(bpm)));
+        if(bpm>0&&bpm<260)runOnUiThread(()->{heart.setText(String.valueOf(bpm));setMetricState(heartState,"LIVE DATA RECEIVED • BPM");});
     }
     private double decodeSfloat(int raw){
         int mantissa=raw&0x0FFF;if((mantissa&0x0800)!=0)mantissa|=0xFFFFF000;
@@ -305,7 +305,7 @@ public class WatchActivity extends Activity {
         if(steps!=null)steps.setText("—");if(calories!=null)calories.setText("—");
         if(battery!=null)battery.setText("BATTERY  •  Not connected");
     }
-    private void setStatus(String message){if(status!=null)status.setText(message);}
+    private void setMetricState(TextView view,String message){if(view!=null)view.setText(message);}\n    private void setStatus(String message){if(status!=null)status.setText(message);}
 
     @Override protected void onDestroy(){
         stopScan("");if(gatt!=null){try{gatt.disconnect();gatt.close();}catch(SecurityException ignored){}gatt=null;}
