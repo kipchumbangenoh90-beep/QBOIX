@@ -453,53 +453,23 @@ public class DashboardActivity extends Activity {
 
     private void showTraining() {
         pageHeading("TRAINING CENTRE");
-        addText("BUILD YOUR ENGINE. TRAIN WITH PURPOSE.", GREEN, 11, true);
+        addText("CHOOSE YOUR SESSION. Q-BOIX WILL TRACK THE JOURNEY.", GREEN, 11, true);
         addSpace(8);
         LinearLayout hero = new LinearLayout(this);
         hero.setOrientation(LinearLayout.VERTICAL);
         hero.setPadding(dp(18), dp(18), dp(18), dp(18));
         hero.setBackground(background(Color.rgb(17, 43, 39), 18));
         hero.addView(text("YOUR NEXT SESSION STARTS HERE", WHITE, 18, true));
-        TextView intro = text("Choose a training discipline. Each section will get its own tools and plans as we build Q-BOIX.", GREY, 12, false);
-        LinearLayout.LayoutParams introParams = new LinearLayout.LayoutParams(-1, -2);
-        introParams.topMargin = dp(7);
-        hero.addView(intro, introParams);
+        TextView intro = text("Every GPS session opens the live map, distance, pace, time and route controls. The selected discipline sets the session mode.", GREY, 12, false);
+        LinearLayout.LayoutParams ip = new LinearLayout.LayoutParams(-1, -2); ip.topMargin = dp(7); hero.addView(intro, ip);
         mainLayout.addView(hero, new LinearLayout.LayoutParams(-1, -2));
         addSpace(10);
-        addTrainingTile("FARTLEK", "Speed bursts | recovery intervals", "01", GOLD, () -> startActivity(new Intent(DashboardActivity.this, FartlekActivity.class)));
-        addTrainingTile("TRACK & FIELD", "Track sessions | lap splits | race distances", "02", BLUE, () -> showMessage("Track & Field tools are next to be developed."));
-        addTrainingTile("CROSS-COUNTRY", "Hills | trails | endurance conditioning", "03", GREEN, () -> showMessage("Cross-Country tools are next to be developed."));
-        addTrainingTile("ROAD RUNNING", "Easy runs | tempo | distance sessions", "04", BLUE, () -> showMessage("Road Running tools are next to be developed."));
-        addTrainingTile("MARATHON TRAINING", "Long runs | weekly mileage | recovery", "05", GOLD, () -> showMessage("Marathon Training tools are next to be developed."));
-        addTrainingTile("CUSTOM WORKOUT", "Build a session around your own goals", "06", GREY, () -> showMessage("Custom Workout tools are next to be developed."));
-    }
-
-    private void addTrainingTile(String title, String description, String number, int accent, Runnable action) {
-        LinearLayout card = new LinearLayout(this);
-        card.setOrientation(LinearLayout.HORIZONTAL);
-        card.setGravity(Gravity.CENTER_VERTICAL);
-        card.setPadding(dp(15), dp(14), dp(13), dp(14));
-        card.setBackground(background(CARD, 16));
-        card.setClickable(true);
-        card.setFocusable(true);
-        TextView index = text(number, accent, 14, true);
-        index.setGravity(Gravity.CENTER);
-        index.setBackground(background(Color.rgb(39, 40, 48), 11));
-        card.addView(index, new LinearLayout.LayoutParams(dp(43), dp(43)));
-        LinearLayout details = new LinearLayout(this);
-        details.setOrientation(LinearLayout.VERTICAL);
-        details.setPadding(dp(13), 0, dp(5), 0);
-        details.addView(text(title, WHITE, 14, true));
-        TextView sub = text(description, GREY, 11, false);
-        LinearLayout.LayoutParams subParams = new LinearLayout.LayoutParams(-1, -2);
-        subParams.topMargin = dp(5);
-        details.addView(sub, subParams);
-        card.addView(details, new LinearLayout.LayoutParams(0, -2, 1));
-        card.addView(text(">", accent, 24, true));
-        LinearLayout.LayoutParams params = new LinearLayout.LayoutParams(-1, -2);
-        params.bottomMargin = dp(10);
-        mainLayout.addView(card, params);
-        card.setOnClickListener(v -> action.run());
+        addTrainingTile("FARTLEK", "Speed and recovery intervals with voice cues", "01", GOLD, () -> startActivity(new Intent(DashboardActivity.this, FartlekActivity.class)));
+        addTrainingTile("TRACK & FIELD", "Track GPS, laps and split times", "02", BLUE, () -> startGpsActivity("TRACK & FIELD"));
+        addTrainingTile("CROSS-COUNTRY", "Trail and hill running GPS session", "03", GREEN, () -> startGpsActivity("CROSS-COUNTRY"));
+        addTrainingTile("ROAD RUNNING", "Road distance, pace and route tracking", "04", BLUE, () -> startGpsActivity("ROAD RUNNING"));
+        addTrainingTile("MARATHON TRAINING", "Long-distance GPS session and splits", "05", GOLD, () -> startGpsActivity("MARATHON"));
+        addTrainingTile("CUSTOM WORKOUT", "Open GPS tracking for your own session", "06", GREY, () -> startGpsActivity("CUSTOM"));
     }
 
     // RECORDS
