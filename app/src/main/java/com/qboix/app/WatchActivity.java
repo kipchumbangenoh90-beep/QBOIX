@@ -478,22 +478,8 @@ public class WatchActivity extends Activity {
                 if(bpm>0&&bpm<260)runOnUiThread(()->{heart.setText(String.valueOf(bpm));setMetricState(heartState,"LIVE DATA RECEIVED • GLORYFIT");});
             }
             boolean stepsDecoded=false;
-            if(GF_HR_NOTIFY.equals(id)&&(data[0]&255)==0xB1){
-                int packetSteps=GloryFitDecoder.decodeSteps(data);
-                if(packetSteps>=0){
-                    stepsDecoded=true;
-                    String packetDate=GloryFitDecoder.decodePacketDate(data);
-                    String today=new java.text.SimpleDateFormat("yyyy-MM-dd",Locale.US).format(new Date());
-                    String state=packetDate==null?"B1 STEP FIELD RECEIVED • DATE UNAVAILABLE":
-                        (packetDate.equals(today)?"B1 STEP FIELD RECEIVED • TODAY":"B1 STEP FIELD RECEIVED • HISTORY "+packetDate);
-                    final String stateText=state;
-                    runOnUiThread(()->{
-                        steps.setText(String.valueOf(packetSteps));
-                        setMetricState(stepsState,stateText+" • VERIFY AGAINST WATCH");
-                    });
-                }
-            }
-            if(GF_HR_NOTIFY.equals(id)&&(data[0]&255)==0xB2)
+            if(GF_HR_NOTIFY.equals(id)&&data.length>0&&
+                    ((data[0]&255)==0xB1||(data[0]&255)==0xB2))
                 stepsDecoded=parseGloryFitSteps(data);
             if(GF_HR_NOTIFY.equals(id)&&(data[0]&255)==0xFD&&data.length==14){
                 // FD realtime layout: sport type, HR, calories16, pace, steps24...
@@ -537,12 +523,14 @@ public class WatchActivity extends Activity {
         }
     }
     private boolean parseGloryFitSteps(byte[] data){
-        // QX11 sample B1 records are 18 bytes. The captured date bytes are
-        // year-high, year-low, DAY, MONTH, HOUR (not MONTH, DAY, HOUR).
-        // Example from the user's log: B1 07 EA 0F 01 15 00 9B ...
-        // means 2026-01-15 at 21:00, with 155 steps in that hourly record.
-        // total16 at bytes 6-7 is big-endian.
-        if(data.length!=18)return false;
+        // B1 live/history step records may include trailing fields after the
+        // observed date and 16-bit hourly count. B2 history records are 18 bytes.
+        // Captured layout: opcode, year-high, year-low, DAY, MONTH, HOUR,
+        // total-high, total-low. Do not display one hourly record as daily steps.
+        if(data.length<8)return false;
+        int opcode=data[0]&255;
+        if(opcode==0xB2&&data.length!=18)return false;
+        if(opcode!=0xB1&&opcode!=0xB2)return false;
         int year=((data[1]&255)<<8)|(data[2]&255);
         int day=data[3]&255, month=data[4]&255, hour=data[5]&255;
         int hourlyTotal=((data[6]&255)<<8)|(data[7]&255);
