@@ -461,7 +461,7 @@ public class WatchActivity extends Activity {
                 if(opcode==0x34)runOnUiThread(()->setMetricState(oxygenState,"OXYGEN PACKET RECEIVED • DECODER PENDING"));
                 if(opcode==0x32)runOnUiThread(()->diagnostic.setText(packet+"\nSleep history packet received on the 56FF data channel."));
             }
-            runOnUiThread(()->diagnostic.setText(packet+"\nRaw GloryFit response received. QX11-specific history decoding is still marked unverified; values are not guessed."));
+            runOnUiThread(()->appendPacketLog(packet));
         }
         else if(PULSE_OX_CONTINUOUS.equals(id)||PULSE_OX_SPOT.equals(id)){
             // IEEE-11073 SFLOAT is used by the standard Pulse Oximeter service.
