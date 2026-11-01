@@ -30,6 +30,30 @@ public class GpsRunActivity extends Activity {
     private FrameLayout mapFrame;
     private final double[] intervals={100,200,400,500,1000,804.672,1609.344,0};
     private final Handler handler=new Handler(Looper.getMainLooper());
+    private LocationManager previewLocationManager;
+    private boolean previewUpdatesRequested;
+    private Location currentPhoneLocation;
+    private final LocationListener previewLocationListener = new LocationListener() {
+        @Override public void onLocationChanged(Location location) {
+            if (location == null) return;
+            currentPhoneLocation = new Location(location);
+            if (fallback != null) fallback.setCurrentLocation(currentPhoneLocation);
+            if (mapWeb != null && mapWeb.getVisibility() == View.VISIBLE) {
+                mapWeb.evaluateJavascript("setUserLocation(" + location.getLatitude() + "," + location.getLongitude() + ")", null);
+            }
+            if (status != null && !active) {
+                status.setText(String.format(Locale.getDefault(),
+                    "GPS READY • ±%.0f m accuracy", location.getAccuracy()));
+            }
+        }
+        @Override public void onStatusChanged(String provider, int state, Bundle extras) {}
+        @Override public void onProviderEnabled(String provider) {
+            if (status != null && !active) status.setText("GPS enabled • finding your position…");
+        }
+        @Override public void onProviderDisabled(String provider) {
+            if (status != null && !active) status.setText("Turn on phone Location / GPS");
+        }
+    };
     private final BroadcastReceiver receiver=new BroadcastReceiver(){
         @Override public void onReceive(Context c,Intent i){
             double metres=i.getDoubleExtra("distance",0),p=i.getDoubleExtra("pace",0);
@@ -50,7 +74,54 @@ public class GpsRunActivity extends Activity {
         }
     };
 
-    @Override public void onCreate(Bundle b){super.onCreate(b);activityType=getIntent().getStringExtra("activity_type");if(activityType==null)activityType="RUN";buildScreen();}
+    @Override public void onCreate(Bundle b){
+        super.onCreate(b);
+        activityType=getIntent().getStringExtra("activity_type");
+        if(activityType==null)activityType="RUN";
+        buildScreen();
+        prepareAutomaticLocation();
+    }
+
+    private void prepareAutomaticLocation() {
+        previewLocationManager = (LocationManager)getSystemService(LOCATION_SERVICE);
+        if (checkSelfPermission(Manifest.permission.ACCESS_FINE_LOCATION) != PackageManager.PERMISSION_GRANTED
+                && checkSelfPermission(Manifest.permission.ACCESS_COARSE_LOCATION) != PackageManager.PERMISSION_GRANTED) {
+            status.setText("Allow location access to find your position");
+            requestPermissions(new String[]{Manifest.permission.ACCESS_FINE_LOCATION, Manifest.permission.ACCESS_COARSE_LOCATION}, 40);
+            return;
+        }
+        startPreviewLocationUpdates();
+    }
+
+    private void startPreviewLocationUpdates() {
+        if (previewLocationManager == null || previewUpdatesRequested) return;
+        boolean gpsEnabled = previewLocationManager.isProviderEnabled(LocationManager.GPS_PROVIDER);
+        boolean networkEnabled = previewLocationManager.isProviderEnabled(LocationManager.NETWORK_PROVIDER);
+        if (!gpsEnabled && !networkEnabled) {
+            status.setText("Turn on Location / GPS on your phone");
+            return;
+        }
+        try {
+            Location last = null;
+            if (checkSelfPermission(Manifest.permission.ACCESS_FINE_LOCATION) == PackageManager.PERMISSION_GRANTED) {
+                last = previewLocationManager.getLastKnownLocation(LocationManager.GPS_PROVIDER);
+            }
+            if (last == null && checkSelfPermission(Manifest.permission.ACCESS_COARSE_LOCATION) == PackageManager.PERMISSION_GRANTED) {
+                last = previewLocationManager.getLastKnownLocation(LocationManager.NETWORK_PROVIDER);
+            }
+            if (last != null) previewLocationListener.onLocationChanged(last);
+
+            if (gpsEnabled && checkSelfPermission(Manifest.permission.ACCESS_FINE_LOCATION) == PackageManager.PERMISSION_GRANTED) {
+                previewLocationManager.requestLocationUpdates(LocationManager.GPS_PROVIDER, 1000, 0, previewLocationListener, Looper.getMainLooper());
+            } else if (networkEnabled && checkSelfPermission(Manifest.permission.ACCESS_COARSE_LOCATION) == PackageManager.PERMISSION_GRANTED) {
+                previewLocationManager.requestLocationUpdates(LocationManager.NETWORK_PROVIDER, 3000, 0, previewLocationListener, Looper.getMainLooper());
+            }
+            previewUpdatesRequested = true;
+            if (status != null && currentPhoneLocation == null) status.setText("Finding your phone location…");
+        } catch (SecurityException e) {
+            status.setText("Location permission is needed to find your position");
+        }
+    }
     private void buildScreen(){
         FrameLayout root=new FrameLayout(this);
         root.setBackgroundColor(Color.TRANSPARENT);
@@ -278,7 +349,7 @@ public class GpsRunActivity extends Activity {
         if(dialog.getWindow()!=null)dialog.getWindow().setLayout((int)(getResources().getDisplayMetrics().widthPixels*.88),-2);
     }
     private void toggleSettings(View drawer,View dim){settingsOpen=!settingsOpen;drawer.setVisibility(settingsOpen?View.VISIBLE:View.GONE);dim.setVisibility(settingsOpen?View.VISIBLE:View.GONE);drawer.bringToFront();dim.bringToFront();if(settingsOpen)drawer.bringToFront();}
-    private String mapHtml(){return "<!doctype html><html><head><meta name='viewport' content='width=device-width,initial-scale=1,maximum-scale=1'><link rel='stylesheet' href='https://unpkg.com/leaflet@1.9.4/dist/leaflet.css'/><style>html,body,#map{height:100%;margin:0;background:#fff}</style></head><body><div id='map'></div><script src='https://unpkg.com/leaflet@1.9.4/dist/leaflet.js'></script><script>var map=L.map('map').setView([0.5143,35.2698],15);L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png',{maxZoom:19,attribution:'© OpenStreetMap'}).addTo(map);var line=L.polyline([],{color:'#3488ff',weight:5}).addTo(map);var marker=null;function setRoute(a){var pts=a.map(p=>[p.lat,p.lon]);line.setLatLngs(pts);if(pts.length){if(marker)marker.setLatLng(pts[pts.length-1]);else marker=L.circleMarker(pts[pts.length-1],{radius:7,color:'#fff',weight:3,fillColor:'#3488ff',fillOpacity:1}).addTo(map);map.panTo(pts[pts.length-1]);}}</script></body></html>";}
+    private String mapHtml(){return "<!doctype html><html><head><meta name='viewport' content='width=device-width,initial-scale=1,maximum-scale=1'><link rel='stylesheet' href='https://unpkg.com/leaflet@1.9.4/dist/leaflet.css'/><style>html,body,#map{height:100%;margin:0;background:#fff}</style></head><body><div id='map'></div><script src='https://unpkg.com/leaflet@1.9.4/dist/leaflet.js'></script><script>var map=L.map('map').setView([0,0],16);L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png',{maxZoom:19,attribution:'© OpenStreetMap'}).addTo(map);var line=L.polyline([],{color:'#3488ff',weight:5}).addTo(map);var marker=null,userMarker=null;function setUserLocation(lat,lon){var p=[lat,lon];if(userMarker)userMarker.setLatLng(p);else userMarker=L.circleMarker(p,{radius:9,color:'#fff',weight:3,fillColor:'#16a66a',fillOpacity:1}).addTo(map);map.setView(p,17);}function setRoute(a){var pts=a.map(p=>[p.lat,p.lon]);line.setLatLngs(pts);if(pts.length){if(marker)marker.setLatLng(pts[pts.length-1]);else marker=L.circleMarker(pts[pts.length-1],{radius:7,color:'#fff',weight:3,fillColor:'#3488ff',fillOpacity:1}).addTo(map);map.panTo(pts[pts.length-1]);}}</script></body></html>";}
     private void updateRoute(String json){try{JSONArray a=new JSONArray(json);fallback.setRoute(a);if(mapWeb.getVisibility()==View.VISIBLE)mapWeb.evaluateJavascript("setRoute("+json+")",null);}catch(Exception ignored){}}
     private String activityHeading(){
         if("MARATHON".equals(activityType))return "MARATHON TRAINING";
@@ -286,13 +357,38 @@ public class GpsRunActivity extends Activity {
         return activityType+" GPS";
     }
     private void requestStart(){double interval=selectedInterval();if(interval<0)return;if(checkSelfPermission(Manifest.permission.ACCESS_FINE_LOCATION)!=PackageManager.PERMISSION_GRANTED){requestPermissions(new String[]{Manifest.permission.ACCESS_FINE_LOCATION,Manifest.permission.ACCESS_COARSE_LOCATION},41);return;}command(GpsTrackingService.START,interval);}
-    @Override public void onRequestPermissionsResult(int r,String[] p,int[] g){super.onRequestPermissionsResult(r,p,g);if(r==41){if(g.length>0&&g[0]==PackageManager.PERMISSION_GRANTED)command(GpsTrackingService.START,selectedInterval());else status.setText("Location permission is required.");}}
+    @Override public void onRequestPermissionsResult(int r,String[] p,int[] g){
+        super.onRequestPermissionsResult(r,p,g);
+        boolean granted=false;
+        for(int result:g) if(result==PackageManager.PERMISSION_GRANTED) granted=true;
+        if(r==40){
+            if(granted) startPreviewLocationUpdates();
+            else status.setText("Location permission denied • GPS unavailable");
+        } else if(r==41){
+            if(granted) command(GpsTrackingService.START,selectedInterval());
+            else status.setText("Location permission is required to record.");
+        }
+    }
     private double selectedInterval(){int pos=intervalChoice.getSelectedItemPosition();if(pos==7){try{double n=Double.parseDouble(customMetres.getText().toString());if(n>=50&&n<=100000)return n;}catch(Exception ignored){}Toast.makeText(this,"Enter a distance from 50 to 100000 metres.",Toast.LENGTH_LONG).show();return -1;}return intervals[pos];}
     private double selectedTrack(){int p=trackLengthChoice.getSelectedItemPosition();if(p<4)return new double[]{100,200,300,400}[p];try{return Double.parseDouble(customMetres.getText().toString());}catch(Exception e){return 400;}}
     private void command(String action){command(action,1000);}
     private void command(String action,double interval){Intent i=new Intent(this,GpsTrackingService.class);i.setAction(action);if(GpsTrackingService.START.equals(action)){i.putExtra(GpsTrackingService.EXTRA_INTERVAL,interval);i.putExtra(GpsTrackingService.EXTRA_ACTIVITY_TYPE,activityType);i.putExtra(GpsTrackingService.EXTRA_TRACK_MODE,modeChoice.getSelectedItemPosition()==1 || "TRACK & FIELD".equals(activityType));i.putExtra(GpsTrackingService.EXTRA_TRACK_LENGTH,selectedTrack());i.putExtra(GpsTrackingService.EXTRA_VOICE_ENABLED,voiceSwitch.isChecked());i.putExtra(GpsTrackingService.EXTRA_ALERTS_ENABLED,alertsSwitch.isChecked());}if(Build.VERSION.SDK_INT>=26)startForegroundService(i);else startService(i);}
     @Override protected void onStart(){super.onStart();IntentFilter f=new IntentFilter(GpsTrackingService.ACTION);if(Build.VERSION.SDK_INT>=33)registerReceiver(receiver,f,Context.RECEIVER_NOT_EXPORTED);else registerReceiver(receiver,f);registered=true;}
-    @Override protected void onStop(){if(registered){unregisterReceiver(receiver);registered=false;}super.onStop();}
+    @Override protected void onStop(){
+        if(registered){unregisterReceiver(receiver);registered=false;}
+        if(previewLocationManager!=null && previewUpdatesRequested){
+            previewLocationManager.removeUpdates(previewLocationListener);
+            previewUpdatesRequested=false;
+        }
+        super.onStop();
+    }
+    @Override protected void onResume(){
+        super.onResume();
+        if(previewLocationManager!=null && checkSelfPermission(Manifest.permission.ACCESS_FINE_LOCATION)==PackageManager.PERMISSION_GRANTED
+                || previewLocationManager!=null && checkSelfPermission(Manifest.permission.ACCESS_COARSE_LOCATION)==PackageManager.PERMISSION_GRANTED){
+            startPreviewLocationUpdates();
+        }
+    }
     @Override protected void onDestroy(){if(mapWeb!=null)mapWeb.destroy();super.onDestroy();}
     private TextView metric(LinearLayout row,String value,String caption){
         LinearLayout card=new LinearLayout(this);
@@ -339,8 +435,8 @@ public class GpsRunActivity extends Activity {
 
     private class RouteCanvas extends View{
         private JSONArray route=new JSONArray();private final Paint line=new Paint(3),dot=new Paint(3);
-        RouteCanvas(Context c){super(c);setBackgroundColor(Color.WHITE);line.setColor(BLUE);line.setStrokeWidth(dp(4));line.setStyle(Paint.Style.STROKE);line.setStrokeCap(Paint.Cap.ROUND);line.setStrokeJoin(Paint.Join.ROUND);dot.setColor(BLUE);}
+        private Location userLocation;\n        RouteCanvas(Context c){super(c);setBackgroundColor(Color.WHITE);line.setColor(BLUE);line.setStrokeWidth(dp(4));line.setStyle(Paint.Style.STROKE);line.setStrokeCap(Paint.Cap.ROUND);line.setStrokeJoin(Paint.Join.ROUND);dot.setColor(BLUE);}\n        void setCurrentLocation(Location location){userLocation=new Location(location);postInvalidate();}
         void setRoute(JSONArray a){route=a;postInvalidate();}
-        @Override protected void onDraw(Canvas c){super.onDraw(c);if(route.length()==0){Paint p=new Paint(3);p.setColor(Color.GRAY);p.setTextSize(dp(14));c.drawText("GPS route will appear here",dp(24),dp(40),p);return;}double minLat=90,maxLat=-90,minLon=180,maxLon=-180;for(int i=0;i<route.length();i++){JSONObject o=route.optJSONObject(i);if(o==null)continue;double la=o.optDouble("lat"),lo=o.optDouble("lon");minLat=Math.min(minLat,la);maxLat=Math.max(maxLat,la);minLon=Math.min(minLon,lo);maxLon=Math.max(maxLon,lo);}float pad=dp(35),w=getWidth()-2*pad,h=getHeight()-2*pad;Path path=new Path();for(int i=0;i<route.length();i++){JSONObject o=route.optJSONObject(i);if(o==null)continue;float x=pad+(float)((o.optDouble("lon")-minLon)/Math.max(0.000001,maxLon-minLon))*w;float y=getHeight()-pad-(float)((o.optDouble("lat")-minLat)/Math.max(0.000001,maxLat-minLat))*h;if(i==0)path.moveTo(x,y);else path.lineTo(x,y);}c.drawPath(path,line);JSONObject last=route.optJSONObject(route.length()-1);if(last!=null){float x=pad+(float)((last.optDouble("lon")-minLon)/Math.max(0.000001,maxLon-minLon))*w;float y=getHeight()-pad-(float)((last.optDouble("lat")-minLat)/Math.max(0.000001,maxLat-minLat))*h;c.drawCircle(x,y,dp(7),dot);}}
+        @Override protected void onDraw(Canvas c){super.onDraw(c);if(route.length()==0){Paint p=new Paint(3);p.setColor(Color.GRAY);p.setTextSize(dp(14));c.drawText(userLocation==null?"Waiting for GPS location…":"GPS position acquired",dp(24),dp(40),p);if(userLocation!=null){Paint userPaint=new Paint(3);userPaint.setColor(Color.rgb(22,166,106));c.drawCircle(getWidth()/2f,getHeight()/2f,dp(10),userPaint);userPaint.setColor(Color.WHITE);userPaint.setTextSize(dp(12));c.drawText(String.format(Locale.getDefault(),"%.5f, %.5f",userLocation.getLatitude(),userLocation.getLongitude()),dp(18),getHeight()/2f+dp(35),userPaint);}return;}double minLat=90,maxLat=-90,minLon=180,maxLon=-180;for(int i=0;i<route.length();i++){JSONObject o=route.optJSONObject(i);if(o==null)continue;double la=o.optDouble("lat"),lo=o.optDouble("lon");minLat=Math.min(minLat,la);maxLat=Math.max(maxLat,la);minLon=Math.min(minLon,lo);maxLon=Math.max(maxLon,lo);}float pad=dp(35),w=getWidth()-2*pad,h=getHeight()-2*pad;Path path=new Path();for(int i=0;i<route.length();i++){JSONObject o=route.optJSONObject(i);if(o==null)continue;float x=pad+(float)((o.optDouble("lon")-minLon)/Math.max(0.000001,maxLon-minLon))*w;float y=getHeight()-pad-(float)((o.optDouble("lat")-minLat)/Math.max(0.000001,maxLat-minLat))*h;if(i==0)path.moveTo(x,y);else path.lineTo(x,y);}c.drawPath(path,line);JSONObject last=route.optJSONObject(route.length()-1);if(last!=null){float x=pad+(float)((last.optDouble("lon")-minLon)/Math.max(0.000001,maxLon-minLon))*w;float y=getHeight()-pad-(float)((last.optDouble("lat")-minLat)/Math.max(0.000001,maxLat-minLat))*h;c.drawCircle(x,y,dp(7),dot);}}
     }
 }
