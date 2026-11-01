@@ -54,6 +54,10 @@ public class WatchActivity extends Activity {
     private boolean gattOperationInFlight=false;
     private final Set<UUID> enabledCharacteristics=Collections.synchronizedSet(new HashSet<>());
     private final ArrayDeque<String> packetHistory=new ArrayDeque<>();
+    // B1/B2 are hourly totals; retain one value per date/hour to avoid duplicates.
+    private final Map<String,Integer> hourlySteps=new LinkedHashMap<>();
+    private boolean spo2SpotPending=false;
+    private boolean spo2EarlyFailureSeen=false;
 
     @Override public void onCreate(Bundle state){
         super.onCreate(state);
@@ -313,7 +317,17 @@ public class WatchActivity extends Activity {
                 }
             },700);
             handler.postDelayed(()->{
-                if(connected && gfMainWrite!=null)sendGloryFitCommand(source,0x34,0x11);
+                if(connected && gfMainWrite!=null){
+                    spo2SpotPending=true;spo2EarlyFailureSeen=false;
+                    sendGloryFitCommand(source,0x34,0x11);
+                    handler.postDelayed(()->{
+                        if(connected&&spo2SpotPending){
+                            spo2SpotPending=false;
+                            runOnUiThread(()->setMetricState(oxygenState,
+                                spo2EarlyFailureSeen?"NO FINAL SpO2 RESULT AFTER MEASUREMENT WINDOW":"MEASUREMENT NOT RECEIVED"));
+                        }
+                    },70000);
+                }
             },2600);
         }else{
             runOnUiThread(()->diagnostic.setText("GloryFit command channel 33F1 is missing. Standard Bluetooth measurements may still work; custom history cannot be requested."));
@@ -465,9 +479,10 @@ public class WatchActivity extends Activity {
             }
             if(GF_HR_NOTIFY.equals(id)&&((data[0]&255)==0xB1||(data[0]&255)==0xB2))parseGloryFitSteps(data);
             if(GF_HR_NOTIFY.equals(id)&&(data[0]&255)==0xFD&&data.length==14){
-                int bpm=data[1]&255;
-                int kcal=((data[2]&255)<<8)|(data[3]&255);
-                int workoutSteps=(data[6]&255)|((data[7]&255)<<8)|((data[8]&255)<<16);
+                // FD realtime layout: sport type, HR, calories16, pace, steps24...
+                int bpm=data[2]&255;
+                int kcal=((data[3]&255)<<8)|(data[4]&255);
+                int workoutSteps=((data[7]&255)<<16)|((data[8]&255)<<8)|(data[9]&255);
                 runOnUiThread(()->{
                     if(bpm>0&&bpm<260){heart.setText(String.valueOf(bpm));setMetricState(heartState,"LIVE WORKOUT HEART RATE");}
                     if(kcal>0&&kcal<20000){calories.setText(String.valueOf(kcal));setMetricState(caloriesState,"WORKOUT CALORIES RECEIVED");}
@@ -476,8 +491,13 @@ public class WatchActivity extends Activity {
             }
             if(GF_HR_NOTIFY.equals(id)&&data.length>=4&&(data[0]&255)==0x34&&(data[1]&255)==0x00){
                 int spo2=data[3]&255;
-                if(spo2>=70&&spo2<=100)runOnUiThread(()->{oxygen.setText(spo2+"%");setMetricState(oxygenState,"SPOT MEASUREMENT RECEIVED");});
-                else if(spo2==0xFF)runOnUiThread(()->setMetricState(oxygenState,"MEASUREMENT FAILED • RETRY ON WATCH"));
+                if(spo2>=70&&spo2<=100){
+                    spo2SpotPending=false;spo2EarlyFailureSeen=false;
+                    runOnUiThread(()->{oxygen.setText(spo2+"%");setMetricState(oxygenState,"SPOT MEASUREMENT RECEIVED");});
+                } else if(spo2==0xFF){
+                    spo2EarlyFailureSeen=true;
+                    runOnUiThread(()->setMetricState(oxygenState,"MEASURING • IGNORING EARLY EMPTY RESPONSE"));
+                }
             }
             if(GF_HR_NOTIFY.equals(id)&&data.length>0){
                 int opcode=data[0]&255;
@@ -499,13 +519,32 @@ public class WatchActivity extends Activity {
         }
     }
     private void parseGloryFitSteps(byte[] data){
-        // B1 live pushes and B2 history records use an 18-byte date/hour record.
-        if(data.length<18)return;
+        // B1/B2 records are 18-byte hourly totals. total16 is big-endian.
+        if(data.length!=18)return;
         int year=((data[1]&255)<<8)|(data[2]&255);
         int month=data[3]&255, day=data[4]&255, hour=data[5]&255;
-        int total=((data[6]&255)<<8)|(data[7]&255);
+        int hourlyTotal=((data[6]&255)<<8)|(data[7]&255);
         if(year<2020||year>2100||month<1||month>12||day<1||day>31||hour>23)return;
-        runOnUiThread(()->{steps.setText(String.format(Locale.US,"%d",total));setMetricState(stepsState,(data[0]&255)==0xB1?"LIVE STEP UPDATE":"STEP HISTORY RECORD");});
+        String date=String.format(Locale.US,"%04d-%02d-%02d",year,month,day);
+        String today=new java.text.SimpleDateFormat("yyyy-MM-dd",Locale.US).format(new Date());
+        String key=date+"-"+String.format(Locale.US,"%02d",hour);
+        hourlySteps.put(key,hourlyTotal);
+        if(!date.equals(today)){
+            runOnUiThread(()->setMetricState(stepsState,"HISTORY RECEIVED • "+date+" (NOT TODAY)"));
+            return;
+        }
+        int dailyTotal=0;
+        for(Map.Entry<String,Integer> entry:hourlySteps.entrySet())
+            if(entry.getKey().startsWith(today+"-"))dailyTotal+=entry.getValue();
+        final int displayTotal=dailyTotal;
+        final int hours=countTodayHours(today);
+        runOnUiThread(()->{
+            steps.setText(String.format(Locale.US,"%d",displayTotal));
+            setMetricState(stepsState,"TODAY • SUM OF "+hours+" HOURLY RECORDS");
+        });
+    }
+    private int countTodayHours(String date){
+        int count=0;for(String key:hourlySteps.keySet())if(key.startsWith(date+"-"))count++;return count;
     }
 
     private void parseHeartRate(byte[] data){
