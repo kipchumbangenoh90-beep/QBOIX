@@ -55,10 +55,6 @@ public class FartlekActivity extends Activity {
                     cueVibration();
                 } else {
                     completedRepetitions++;
-                    if (completedRepetitions >= targetRepetitions) {
-                        finishWorkout();
-                        return;
-                    }
                     recoveryPhase = false;
                     remainingSeconds = sprintSeconds;
                     phaseText.setText("SPRINT • RUN FAST");
@@ -244,12 +240,11 @@ public class FartlekActivity extends Activity {
 
     private void confirmStop() {
         if(!running) { finish(); return; }
-        new AlertDialog.Builder(this).setTitle("Stop workout?")
-            .setMessage("This interval session will not be saved as completed.")
-            .setNegativeButton("Continue",null)
-            .setPositiveButton("Stop",(d,w)->resetWorkout()).show();
+        new AlertDialog.Builder(this).setTitle("Finish this fartlek session?")
+            .setMessage("Save this session with "+completedRepetitions+" completed fast/easy rounds?")
+            .setNegativeButton("KEEP GOING",null)
+            .setPositiveButton("FINISH & SAVE",(d,w)->finishWorkout()).show();
     }
-
     private void resetWorkout() {
         handler.removeCallbacks(ticker);
         running=false; paused=false; completedRepetitions=0; elapsedSeconds=0;
@@ -288,9 +283,9 @@ public class FartlekActivity extends Activity {
 
     private void updateDisplay() {
         if(!running && completedRepetitions==0) {
-            int s=readPreview(sprintMinutesInput,3)*60+readPreview(sprintSecondsInput,0);
+            int s=previewDuration(sprintDurationInput,180);
             timerText.setText(formatTime(s));
-            progressText.setText("0 / "+safePreviewReps()+" intervals");
+            progressText.setText("Open session | 0 rounds complete");
             elapsedText.setText("Elapsed "+formatTime(elapsedSeconds));
             return;
         }
