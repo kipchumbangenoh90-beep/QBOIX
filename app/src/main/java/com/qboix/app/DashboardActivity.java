@@ -186,23 +186,17 @@ public class DashboardActivity extends Activity {
     }
 
     private void updateNavigation() {
-
         for (int i = 0; i < navigation.getChildCount(); i++) {
-
-            LinearLayout item =
-                    (LinearLayout) navigation.getChildAt(i);
-
-            boolean selected = tabs[i].equals(currentPage);
-
+            LinearLayout item = (LinearLayout) navigation.getChildAt(i);
+            boolean active = tabs[i].equals(currentPage)
+                    || (("Records".equals(currentPage) || "Achievements".equals(currentPage) || "Analytics".equals(currentPage)) && "Activity".equals(tabs[i]))
+                    || ("Settings".equals(currentPage) && "You".equals(tabs[i]));
             ImageView icon = (ImageView) item.getChildAt(0);
             TextView label = (TextView) item.getChildAt(1);
-
-            icon.setColorFilter(selected ? Color.rgb(255, 211, 104) : Color.rgb(181, 145, 67));
-            label.setTextColor(selected ? Color.rgb(255, 218, 130) : GREY);
-
-            item.setBackground(selected
-                    ? background(Color.rgb(38, 34, 25), 10)
-                    : background(Color.TRANSPARENT, 10));
+            icon.setColorFilter(active ? GREEN : Color.rgb(145, 151, 163));
+            label.setTextColor(active ? GREEN : GREY);
+            item.setBackground(active ? background(Color.rgb(22, 49, 42), 13) : background(Color.TRANSPARENT, 13));
+            item.setContentDescription(tabs[i] + (active ? ", selected" : ""));
         }
     }
 
@@ -458,67 +452,54 @@ public class DashboardActivity extends Activity {
     // TRAINING
 
     private void showTraining() {
-
         pageHeading("TRAINING CENTRE");
+        addText("BUILD YOUR ENGINE. TRAIN WITH PURPOSE.", GREEN, 11, true);
+        addSpace(8);
+        LinearLayout hero = new LinearLayout(this);
+        hero.setOrientation(LinearLayout.VERTICAL);
+        hero.setPadding(dp(18), dp(18), dp(18), dp(18));
+        hero.setBackground(background(Color.rgb(17, 43, 39), 18));
+        hero.addView(text("YOUR NEXT SESSION STARTS HERE", WHITE, 18, true));
+        TextView intro = text("Choose a training discipline. Each section will get its own tools and plans as we build Q-BOIX.", GREY, 12, false);
+        LinearLayout.LayoutParams introParams = new LinearLayout.LayoutParams(-1, -2);
+        introParams.topMargin = dp(7);
+        hero.addView(intro, introParams);
+        mainLayout.addView(hero, new LinearLayout.LayoutParams(-1, -2));
+        addSpace(10);
+        addTrainingTile("FARTLEK", "Speed bursts | recovery intervals", "01", GOLD, () -> startActivity(new Intent(DashboardActivity.this, FartlekActivity.class)));
+        addTrainingTile("TRACK & FIELD", "Track sessions | lap splits | race distances", "02", BLUE, () -> showMessage("Track & Field tools are next to be developed."));
+        addTrainingTile("CROSS-COUNTRY", "Hills | trails | endurance conditioning", "03", GREEN, () -> showMessage("Cross-Country tools are next to be developed."));
+        addTrainingTile("ROAD RUNNING", "Easy runs | tempo | distance sessions", "04", BLUE, () -> showMessage("Road Running tools are next to be developed."));
+        addTrainingTile("MARATHON TRAINING", "Long runs | weekly mileage | recovery", "05", GOLD, () -> showMessage("Marathon Training tools are next to be developed."));
+        addTrainingTile("CUSTOM WORKOUT", "Build a session around your own goals", "06", GREY, () -> showMessage("Custom Workout tools are next to be developed."));
+    }
 
-        addText(
-                "Choose the type of training you want to perform.",
-                GREY, 13, false
-        );
-
-        addActionCard(
-                "FARTLEK",
-                "Custom sprint and recovery intervals",
-                GOLD,
-                () -> startActivity(new Intent(
-                        DashboardActivity.this, FartlekActivity.class
-                ))
-        );
-
-        addActionCard(
-                "TRACK AND FIELD",
-                "Track laps, split times and distances",
-                BLUE,
-                () -> showMessage(
-                        "Track and field tools will be developed in Steps 12 and 14."
-                )
-        );
-
-        addActionCard(
-                "CROSS-COUNTRY",
-                "Cross-country running and training",
-                GREEN,
-                () -> showMessage(
-                        "Cross-country tracking will connect to the GPS engine."
-                )
-        );
-
-        addActionCard(
-                "ROAD RUNNING",
-                "Road running and distance sessions",
-                BLUE,
-                () -> showMessage(
-                        "Road running tools will be connected to the GPS engine."
-                )
-        );
-
-        addActionCard(
-                "MARATHON TRAINING",
-                "Long-distance training sessions",
-                GOLD,
-                () -> showMessage(
-                        "Marathon training will be developed in Step 14."
-                )
-        );
-
-        addActionCard(
-                "CUSTOM WORKOUT",
-                "Create your own training session",
-                GREY,
-                () -> showMessage(
-                        "Custom workouts will be added to the training system."
-                )
-        );
+    private void addTrainingTile(String title, String description, String number, int accent, Runnable action) {
+        LinearLayout card = new LinearLayout(this);
+        card.setOrientation(LinearLayout.HORIZONTAL);
+        card.setGravity(Gravity.CENTER_VERTICAL);
+        card.setPadding(dp(15), dp(14), dp(13), dp(14));
+        card.setBackground(background(CARD, 16));
+        card.setClickable(true);
+        card.setFocusable(true);
+        TextView index = text(number, accent, 14, true);
+        index.setGravity(Gravity.CENTER);
+        index.setBackground(background(Color.rgb(39, 40, 48), 11));
+        card.addView(index, new LinearLayout.LayoutParams(dp(43), dp(43)));
+        LinearLayout details = new LinearLayout(this);
+        details.setOrientation(LinearLayout.VERTICAL);
+        details.setPadding(dp(13), 0, dp(5), 0);
+        details.addView(text(title, WHITE, 14, true));
+        TextView sub = text(description, GREY, 11, false);
+        LinearLayout.LayoutParams subParams = new LinearLayout.LayoutParams(-1, -2);
+        subParams.topMargin = dp(5);
+        details.addView(sub, subParams);
+        card.addView(details, new LinearLayout.LayoutParams(0, -2, 1));
+        card.addView(text(">", accent, 24, true));
+        LinearLayout.LayoutParams params = new LinearLayout.LayoutParams(-1, -2);
+        params.bottomMargin = dp(10);
+        mainLayout.addView(card, params);
+        card.setOnClickListener(v -> action.run());
     }
 
     // RECORDS
