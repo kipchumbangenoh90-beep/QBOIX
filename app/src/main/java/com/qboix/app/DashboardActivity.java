@@ -712,6 +712,13 @@ public class DashboardActivity extends Activity {
                 "Training reminders and alerts."
         );
 
+        addActionCard(
+                "WATCH CONNECTION",
+                "Connect your GloryFit smartwatch and check live sensor data.",
+                GREEN,
+                () -> startActivity(new Intent(DashboardActivity.this, WatchActivity.class))
+        );
+
         addSimpleCard(
                 "GPS SETTINGS",
                 "Location and tracking preferences."
