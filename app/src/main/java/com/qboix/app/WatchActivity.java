@@ -301,8 +301,20 @@ public class WatchActivity extends Activity {
             sendGloryFitCommand(source,0xA2);                 // live battery
             sendGloryFitCommand(source,0xB2,0xFA);             // step history
             sendGloryFitCommand(source,0xF7,0xFA);             // heart-rate history
-            sendGloryFitCommand(source,0x34,0xFA);             // blood-oxygen history
+            sendGloryFitCommand(source,0x34,0xFA);             // SpO2 history
             sendGloryFitCommand(source,0x31,0x01);             // sleep history
+            sendGloryFitCommand(source,0xF7,0x01);             // enable continuous HR sampling
+            handler.postDelayed(()->{
+                if(connected && gfMainWrite!=null){
+                    sendGloryFitCommand(source,0xD6,0x02);
+                    handler.postDelayed(()->{
+                        if(connected && gfMainWrite!=null)sendGloryFitCommand(source,0xE5,0x11);
+                    },1500);
+                }
+            },700);
+            handler.postDelayed(()->{
+                if(connected && gfMainWrite!=null)sendGloryFitCommand(source,0x34,0x11);
+            },2600);
         }else{
             runOnUiThread(()->diagnostic.setText("GloryFit command channel 33F1 is missing. Standard Bluetooth measurements may still work; custom history cannot be requested."));
         }
@@ -451,6 +463,12 @@ public class WatchActivity extends Activity {
                 int bpm=data[3]&255;
                 if(bpm>0&&bpm<260)runOnUiThread(()->{heart.setText(String.valueOf(bpm));setMetricState(heartState,"LIVE DATA RECEIVED • GLORYFIT");});
             }
+            if(GF_HR_NOTIFY.equals(id)&&((data[0]&255)==0xB1||(data[0]&255)==0xB2))parseGloryFitSteps(data);
+            if(GF_HR_NOTIFY.equals(id)&&data.length>=4&&(data[0]&255)==0x34&&(data[1]&255)==0x00){
+                int spo2=data[3]&255;
+                if(spo2>=70&&spo2<=100)runOnUiThread(()->{oxygen.setText(spo2+"%");setMetricState(oxygenState,"SPOT MEASUREMENT RECEIVED");});
+                else if(spo2==0xFF)runOnUiThread(()->setMetricState(oxygenState,"MEASUREMENT FAILED • RETRY ON WATCH"));
+            }
             if(GF_HR_NOTIFY.equals(id)&&data.length>0){
                 int opcode=data[0]&255;
                 if(opcode==0xB1||opcode==0xB2)runOnUiThread(()->setMetricState(stepsState,"WATCH PACKET RECEIVED • DECODER PENDING"));
@@ -470,6 +488,16 @@ public class WatchActivity extends Activity {
                 if((flags&0x01)==0&&spo2>=0&&spo2<=100)runOnUiThread(()->{oxygen.setText(String.format(Locale.US,"%.0f%%",spo2));setMetricState(oxygenState,"DATA RECEIVED FROM WATCH");});}
         }
     }
+    private void parseGloryFitSteps(byte[] data){
+        // B1 live pushes and B2 history records use an 18-byte date/hour record.
+        if(data.length<18)return;
+        int year=((data[1]&255)<<8)|(data[2]&255);
+        int month=data[3]&255, day=data[4]&255, hour=data[5]&255;
+        int total=((data[6]&255)<<8)|(data[7]&255);
+        if(year<2020||year>2100||month<1||month>12||day<1||day>31||hour>23)return;
+        runOnUiThread(()->{steps.setText(String.format(Locale.US,"%d",total));setMetricState(stepsState,(data[0]&255)==0xB1?"LIVE STEP UPDATE":"STEP HISTORY RECORD");});
+    }
+
     private void parseHeartRate(byte[] data){
         if(data.length<2)return;int flags=data[0]&255;
         if((flags&1)!=0&&data.length<3)return;
