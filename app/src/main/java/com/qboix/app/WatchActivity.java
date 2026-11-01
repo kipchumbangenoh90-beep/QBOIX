@@ -96,13 +96,22 @@ public class WatchActivity extends Activity {
             if(n==BluetoothProfile.STATE_CONNECTED){gatt=g;try{g.discoverServices();}catch(SecurityException ignored){}}
         }
         @Override public void onServicesDiscovered(BluetoothGatt g,int s){
+            if(s!=BluetoothGatt.GATT_SUCCESS){runOnUiThread(()->detail.setText("Service discovery failed: "+s));return;}
             boolean hasHr=g.getService(HR_SERVICE)!=null;
-            runOnUiThread(()->detail.setText("Bluetooth services discovered: "+g.getServices().size()+". Standard heart-rate service: "+(hasHr?"available":"not exposed by this watch")+"."));
-            if(hasHr){BluetoothGattCharacteristic c=g.getService(HR_SERVICE).getCharacteristic(HR_MEASURE);if(c!=null)try{g.setCharacteristicNotification(c,true);BluetoothGattDescriptor desc=c.getDescriptor(CCCD);if(desc!=null){desc.setValue(BluetoothGattDescriptor.ENABLE_NOTIFICATION_VALUE);g.writeDescriptor(desc);}}catch(SecurityException ignored){}}
+            StringBuilder report=new StringBuilder("GATT services: ").append(g.getServices().size()).append("\\n");
+            for(BluetoothGattService service:g.getServices()){
+                report.append("SERVICE ").append(service.getUuid()).append("\\n");
+                for(BluetoothGattCharacteristic ch:service.getCharacteristics()){
+                    report.append("  CHARACTERISTIC ").append(ch.getUuid()).append(" properties=").append(ch.getProperties()).append("\\n");
+                }
+            }
+            String serviceReport=report.toString();
+            runOnUiThread(()->detail.setText("QXII protocol inspection\\n"+serviceReport+"Standard heart-rate service: "+(hasHr?"available":"not exposed by this watch")+"."));
+            if(hasHr){BluetoothGattCharacteristic ch=g.getService(HR_SERVICE).getCharacteristic(HR_MEASURE);if(ch!=null)try{g.setCharacteristicNotification(ch,true);BluetoothGattDescriptor desc=ch.getDescriptor(CCCD);if(desc!=null){desc.setValue(BluetoothGattDescriptor.ENABLE_NOTIFICATION_VALUE);g.writeDescriptor(desc);}}catch(SecurityException ignored){}}
         }
         @Override public void onCharacteristicChanged(BluetoothGatt g,BluetoothGattCharacteristic c){if(HR_MEASURE.equals(c.getUuid()))showHeart(c.getValue());}
         @Override public void onCharacteristicChanged(BluetoothGatt g,BluetoothGattCharacteristic c,byte[] value){if(HR_MEASURE.equals(c.getUuid()))showHeart(value);}
     };
-    private void showHeart(byte[] v){if(v==null||v.length<2)return;int flags=v[0]&255;int bpm=(flags&1)==0?(v[1]&255):((v[2]&255)<<8)|(v[1]&255);runOnUiThread(()->heart.setText("Heart rate: "+bpm+" bpm"));}
+    private void showHeart(byte[] v){if(v==null||v.length<2)return;int flags=v[0]&255;if((flags&1)!=0&&v.length<3)return;int bpm=(flags&1)==0?(v[1]&255):((v[2]&255)<<8)|(v[1]&255);runOnUiThread(()->heart.setText("Heart rate: "+bpm+" bpm"));}
     @Override protected void onDestroy(){stopScan("");if(gatt!=null){try{gatt.disconnect();gatt.close();}catch(SecurityException ignored){}}super.onDestroy();}
 }
