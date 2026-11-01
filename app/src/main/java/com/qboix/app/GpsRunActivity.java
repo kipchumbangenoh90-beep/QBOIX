@@ -178,11 +178,15 @@ public class GpsRunActivity extends Activity {
     }
 
     private LinearLayout buildSettings(){
-        LinearLayout box=new LinearLayout(this);box.setOrientation(LinearLayout.VERTICAL);box.setPadding(dp(18),dp(15),dp(18),dp(18));GradientDrawable sheet=new GradientDrawable();
-        sheet.setColor(Color.rgb(8,9,13));
-        sheet.setCornerRadius(dp(26));
-        sheet.setStroke(dp(1),0x557F6A35);
-        box.setBackground(sheet);
+        LinearLayout box=new LinearLayout(this);box.setOrientation(LinearLayout.VERTICAL);box.setPadding(dp(18),dp(15),dp(18),dp(18));Bitmap settingsBitmap=BitmapFactory.decodeResource(getResources(),R.drawable.workout_settings_bg);
+        BitmapDrawable settingsPhoto=new BitmapDrawable(getResources(),settingsBitmap);
+        settingsPhoto.setGravity(Gravity.FILL);
+        GradientDrawable darkOverlay=new GradientDrawable();
+        darkOverlay.setColor(0xB809090D);
+        darkOverlay.setCornerRadius(dp(26));
+        LayerDrawable settingsBackground=new LayerDrawable(new android.graphics.drawable.Drawable[]{settingsPhoto,darkOverlay});
+        box.setBackground(settingsBackground);
+        box.setClipToOutline(true);
         box.setElevation(dp(12));
         TextView title=label("WORKOUT SETTINGS",Color.WHITE,17,true);
         title.setPaintFlags(title.getPaintFlags()|Paint.UNDERLINE_TEXT_FLAG);
