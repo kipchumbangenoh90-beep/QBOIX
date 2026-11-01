@@ -1,6 +1,10 @@
 package com.qboix.app;
 
 import android.app.Activity;
+import android.Manifest;
+import android.content.Intent;
+import android.content.pm.PackageManager;
+import android.os.Build;
 import android.app.AlertDialog;
 import android.graphics.Color;
 import android.graphics.Typeface;
@@ -208,7 +212,7 @@ public class FartlekActivity extends Activity {
     }
     private void startOrResume() {
         if (running && paused) {
-            paused=false; startButton.setText("WORKOUT RUNNING");
+            paused=false; gpsCommand(GpsTrackingService.RESUME); startButton.setText("WORKOUT RUNNING");
             handler.postDelayed(ticker,1000);
             return;
         }
@@ -227,6 +231,7 @@ public class FartlekActivity extends Activity {
         }
         completedRepetitions=0; elapsedSeconds=0; phaseElapsedSeconds=0; while(intervalSplits.length()>0)intervalSplits.remove(0); workoutStartedAt=System.currentTimeMillis(); recoveryPhase=false;
         remainingSeconds=sprintSeconds; running=true; paused=false;
+        startGpsTracking();
         setIntervalInputsEnabled(false);
         phaseText.setText("SPRINT • RUN FAST");
         startButton.setText("WORKOUT RUNNING");
@@ -237,6 +242,7 @@ public class FartlekActivity extends Activity {
     private void pauseWorkout() {
         if(!running||paused) return;
         paused=true; handler.removeCallbacks(ticker);
+        gpsCommand(GpsTrackingService.PAUSE);
         phaseText.setText("PAUSED");
         startButton.setText("RESUME WORKOUT");
     }
@@ -259,6 +265,7 @@ public class FartlekActivity extends Activity {
     private void finishWorkout() {
         handler.removeCallbacks(ticker);
         running=false; paused=false;
+        gpsCommand(GpsTrackingService.FINISH);
         recordIntervalSplit();
         WorkoutStore.saveFartlek(this,sprintSeconds,recoverySeconds,completedRepetitions,elapsedSeconds,workoutStartedAt,System.currentTimeMillis(),intervalSplits);
         phaseText.setText("WORKOUT COMPLETE");
@@ -268,6 +275,33 @@ public class FartlekActivity extends Activity {
         startButton.setText("START AGAIN");
         setIntervalInputsEnabled(true);
         Toast.makeText(this,"Fartlek workout saved on this device.",Toast.LENGTH_LONG).show();
+    }
+
+    private void startGpsTracking() {
+        if(checkSelfPermission(Manifest.permission.ACCESS_FINE_LOCATION)!=PackageManager.PERMISSION_GRANTED) {
+            requestPermissions(new String[]{Manifest.permission.ACCESS_FINE_LOCATION,Manifest.permission.ACCESS_COARSE_LOCATION},72);
+            return;
+        }
+        Intent i=new Intent(this,GpsTrackingService.class);
+        i.setAction(GpsTrackingService.START);
+        i.putExtra(GpsTrackingService.EXTRA_ACTIVITY_TYPE,"FARTLEK");
+        i.putExtra(GpsTrackingService.EXTRA_INTERVAL,1000.0);
+        i.putExtra(GpsTrackingService.EXTRA_TRACK_MODE,false);
+        i.putExtra(GpsTrackingService.EXTRA_VOICE_ENABLED,false);
+        i.putExtra(GpsTrackingService.EXTRA_ALERTS_ENABLED,false);
+        if(Build.VERSION.SDK_INT>=26)startForegroundService(i);else startService(i);
+    }
+    private void gpsCommand(String action) {
+        Intent i=new Intent(this,GpsTrackingService.class);i.setAction(action);
+        if(Build.VERSION.SDK_INT>=26)startForegroundService(i);else startService(i);
+    }
+    @Override public void onRequestPermissionsResult(int requestCode,String[] permissions,int[] results) {
+        super.onRequestPermissionsResult(requestCode,permissions,results);
+        if(requestCode==72) {
+            boolean granted=false;for(int result:results)if(result==PackageManager.PERMISSION_GRANTED)granted=true;
+            if(granted)startGpsTracking();
+            else Toast.makeText(this,"GPS permission denied. Fartlek timer will continue without route tracking.",Toast.LENGTH_LONG).show();
+        }
     }
 
     private void recordIntervalSplit() {
