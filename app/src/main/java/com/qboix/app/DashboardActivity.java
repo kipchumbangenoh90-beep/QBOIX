@@ -16,6 +16,11 @@ import android.widget.TextView;
 import android.widget.VideoView;
 import android.media.MediaPlayer;
 import android.net.Uri;
+import org.json.JSONArray;
+import org.json.JSONObject;
+import java.text.SimpleDateFormat;
+import java.util.Date;
+import java.util.Locale;
 
 
 public class DashboardActivity extends Activity {
@@ -519,27 +524,83 @@ public class DashboardActivity extends Activity {
     // RECORDS
 
     private void showRecords() {
-
         pageHeading("PERSONAL RECORDS");
+        addText("YOUR GPS BESTS", GREEN, 12, true);
+        addSpace(8);
+        LinearLayout hero = new LinearLayout(this);
+        hero.setOrientation(LinearLayout.VERTICAL);
+        hero.setPadding(dp(18), dp(18), dp(18), dp(18));
+        hero.setBackground(background(Color.rgb(20, 48, 42), 18));
+        TextView heroTitle = text("EVERY SECOND COUNTS", WHITE, 19, true);
+        hero.addView(heroTitle);
+        TextView heroInfo = text("Q-BOIX checks your completed GPS runs and keeps the fastest time at each distance.", GREY, 13, false);
+        LinearLayout.LayoutParams infoParams = new LinearLayout.LayoutParams(-1, -2);
+        infoParams.topMargin = dp(7);
+        hero.addView(heroInfo, infoParams);
+        addView(mainLayout, hero, 8);
 
-        addText(
-                "Your best performances and progress.",
-                GREY, 14, false
-        );
-
-        String[] events = {
-                "800 METRES",
-                "1500 METRES",
-                "3000 METRES",
-                "5000 METRES",
-                "10 KILOMETRES",
-                "HALF MARATHON",
-                "MARATHON"
-        };
-
-        for (String event : events) {
-            addSimpleCard(event, "No recorded result yet");
+        String[] names = {"800 METRES","1500 METRES","3000 METRES","5000 METRES","10 KILOMETRES","HALF MARATHON","MARATHON"};
+        double[] targets = {800,1500,3000,5000,10000,21097.5,42195};
+        JSONArray sessions = WorkoutStore.getRunSessions(this);
+        SimpleDateFormat dateFormat = new SimpleDateFormat("d MMM yyyy", Locale.getDefault());
+        for (int n=0; n<targets.length; n++) {
+            int best = Integer.MAX_VALUE;
+            long bestDate = 0;
+            for (int r=0; r<sessions.length(); r++) {
+                JSONObject session = sessions.optJSONObject(r);
+                if (session == null) continue;
+                String type = session.optString("activityType", session.optString("type","RUN"));
+                if ("WALK".equalsIgnoreCase(type)) continue;
+                JSONArray samples = session.optJSONArray("distanceTimeSamples");
+                if (samples == null) continue;
+                JSONObject previousSample = null;
+                for (int s=0; s<samples.length(); s++) {
+                    JSONObject sample = samples.optJSONObject(s);
+                    if (sample == null) continue;
+                    double distance = sample.optDouble("distanceMeters",-1);
+                    int seconds = sample.optInt("elapsedSeconds",-1);
+                    if (previousSample != null) {
+                        double previousDistance = previousSample.optDouble("distanceMeters",-1);
+                        int previousSeconds = previousSample.optInt("elapsedSeconds",-1);
+                        if (previousDistance <= targets[n] && distance >= targets[n] && distance > previousDistance && seconds >= previousSeconds) {
+                            double fraction = (targets[n]-previousDistance)/(distance-previousDistance);
+                            int checkpoint = (int)Math.round(previousSeconds + fraction*(seconds-previousSeconds));
+                            if (checkpoint > 0 && checkpoint < best) {
+                                best = checkpoint;
+                                bestDate = session.optLong("startedAt",0);
+                            }
+                            break;
+                        }
+                    }
+                    previousSample = sample;
+                }
+            }
+            LinearLayout card = new LinearLayout(this);
+            card.setOrientation(LinearLayout.VERTICAL);
+            card.setPadding(dp(16),dp(14),dp(16),dp(14));
+            card.setBackground(background(CARD,16));
+            LinearLayout top = new LinearLayout(this);
+            top.setOrientation(LinearLayout.HORIZONTAL);
+            top.setGravity(Gravity.CENTER_VERTICAL);
+            TextView event = text(names[n], WHITE, 14, true);
+            top.addView(event,new LinearLayout.LayoutParams(0,-2,1));
+            TextView time = text(best==Integer.MAX_VALUE ? "--:--" : formatRecordTime(best), best==Integer.MAX_VALUE?GREY:GREEN, 23, true);
+            top.addView(time);
+            card.addView(top);
+            String detail = best==Integer.MAX_VALUE ? "No qualifying GPS run yet" : "GPS best • " + (bestDate>0?dateFormat.format(new Date(bestDate)):"Date unavailable");
+            TextView note = text(detail, GREY, 11, false);
+            LinearLayout.LayoutParams noteParams = new LinearLayout.LayoutParams(-1,-2);
+            noteParams.topMargin = dp(5);
+            card.addView(note,noteParams);
+            addView(mainLayout,card,10);
         }
+        addSpace(8);
+        addText("GPS checkpoint times are interpolated between recorded location samples. They are training estimates, not certified race results.", GREY, 11, false);
+    }
+
+    private String formatRecordTime(int seconds) {
+        if (seconds >= 3600) return String.format(Locale.US,"%d:%02d:%02d",seconds/3600,(seconds%3600)/60,seconds%60);
+        return String.format(Locale.US,"%d:%02d",seconds/60,seconds%60);
     }
 
     // PROFILE
