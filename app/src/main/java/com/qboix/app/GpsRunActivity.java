@@ -23,7 +23,7 @@ public class GpsRunActivity extends Activity {
     private final int GOLD=Color.rgb(215,181,91), BG=Color.rgb(9,9,13), CARD=Color.rgb(27,27,34), GREY=Color.rgb(165,165,175), BLUE=Color.rgb(52,136,255);
     private TextView distance,time,pace,speed,calories,lapStatus,status,activityTitle;
     private Button start,pause,finish;
-    private Spinner intervalChoice,modeChoice,trackLengthChoice;
+    private Spinner intervalChoice,modeChoice,trackLengthChoice,lapAlertChoice;
     private EditText customMetres;
     private Switch voiceSwitch,alertsSwitch;
     private boolean active,paused,registered,voiceEnabled=true,alertsEnabled=true,settingsOpen;
@@ -278,7 +278,7 @@ public class GpsRunActivity extends Activity {
         else if ("CROSS-COUNTRY".equals(activityType)) modeChoice.setSelection(2);
         else modeChoice.setSelection(0);
         addSetting(box,"WORKOUT MODE",modeChoice);
-        trackLengthChoice=new Spinner(this);trackLengthChoice.setAdapter(new ArrayAdapter<>(this,android.R.layout.simple_spinner_dropdown_item,new String[]{"100 m","200 m","300 m","400 m","Custom track"}));addSetting(box,"TRACK LENGTH",trackLengthChoice);
+        trackLengthChoice=new Spinner(this);trackLengthChoice.setAdapter(new ArrayAdapter<>(this,android.R.layout.simple_spinner_dropdown_item,new String[]{"100 m","200 m","300 m","400 m","Custom track"}));addSetting(box,"TRACK LENGTH",trackLengthChoice);\n        lapAlertChoice=new Spinner(this);lapAlertChoice.setAdapter(new ArrayAdapter<>(this,android.R.layout.simple_spinner_dropdown_item,new String[]{"Every lap","Every 2 laps","Every 3 laps","Every 4 laps","Every 5 laps","Every 8 laps","Every 9 laps"}));addSetting(box,"LAP VOICE ALERT FREQUENCY",lapAlertChoice);
         intervalChoice=new Spinner(this);intervalChoice.setAdapter(new ArrayAdapter<>(this,android.R.layout.simple_spinner_dropdown_item,new String[]{"100 m","200 m","400 m","500 m","1 km","Half mile","1 mile","Custom metres"}));intervalChoice.setSelection(4);addSetting(box,"VOICE ALERT DISTANCE",intervalChoice);
         customMetres=new EditText(this);
         customMetres.setSingleLine(true);
@@ -381,7 +381,7 @@ public class GpsRunActivity extends Activity {
     private double selectedInterval(){int pos=intervalChoice.getSelectedItemPosition();if(pos==7){try{double n=Double.parseDouble(customMetres.getText().toString());if(n>=50&&n<=100000)return n;}catch(Exception ignored){}Toast.makeText(this,"Enter a distance from 50 to 100000 metres.",Toast.LENGTH_LONG).show();return -1;}return intervals[pos];}
     private double selectedTrack(){int p=trackLengthChoice.getSelectedItemPosition();if(p<4)return new double[]{100,200,300,400}[p];try{return Double.parseDouble(customMetres.getText().toString());}catch(Exception e){return 400;}}
     private void command(String action){command(action,1000);}
-    private void command(String action,double interval){Intent i=new Intent(this,GpsTrackingService.class);i.setAction(action);if(GpsTrackingService.START.equals(action)){i.putExtra(GpsTrackingService.EXTRA_INTERVAL,interval);i.putExtra(GpsTrackingService.EXTRA_ACTIVITY_TYPE,activityType);i.putExtra(GpsTrackingService.EXTRA_TRACK_MODE,modeChoice.getSelectedItemPosition()==1 || "TRACK & FIELD".equals(activityType));i.putExtra(GpsTrackingService.EXTRA_TRACK_LENGTH,selectedTrack());i.putExtra(GpsTrackingService.EXTRA_VOICE_ENABLED,voiceSwitch.isChecked());i.putExtra(GpsTrackingService.EXTRA_ALERTS_ENABLED,alertsSwitch.isChecked());}if(Build.VERSION.SDK_INT>=26)startForegroundService(i);else startService(i);}
+    private void command(String action,double interval){Intent i=new Intent(this,GpsTrackingService.class);i.setAction(action);if(GpsTrackingService.START.equals(action)){i.putExtra(GpsTrackingService.EXTRA_INTERVAL,interval);i.putExtra(GpsTrackingService.EXTRA_ACTIVITY_TYPE,activityType);i.putExtra(GpsTrackingService.EXTRA_TRACK_MODE,modeChoice.getSelectedItemPosition()==1 || "TRACK & FIELD".equals(activityType));i.putExtra(GpsTrackingService.EXTRA_TRACK_LENGTH,selectedTrack());i.putExtra(GpsTrackingService.EXTRA_LAP_ALERT_EVERY,new int[]{1,2,3,4,5,8,9}[lapAlertChoice.getSelectedItemPosition()]);i.putExtra(GpsTrackingService.EXTRA_VOICE_ENABLED,voiceSwitch.isChecked());i.putExtra(GpsTrackingService.EXTRA_ALERTS_ENABLED,alertsSwitch.isChecked());}if(Build.VERSION.SDK_INT>=26)startForegroundService(i);else startService(i);}
     @Override protected void onStart(){super.onStart();IntentFilter f=new IntentFilter(GpsTrackingService.ACTION);if(Build.VERSION.SDK_INT>=33)registerReceiver(receiver,f,Context.RECEIVER_NOT_EXPORTED);else registerReceiver(receiver,f);registered=true;}
     @Override protected void onStop(){
         if(registered){unregisterReceiver(receiver);registered=false;}
