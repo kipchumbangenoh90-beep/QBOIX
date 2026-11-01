@@ -414,7 +414,7 @@ public class DashboardActivity extends Activity {
                 new int[]{Color.argb(235, 15, 19, 28),
                         Color.argb(218, 24, 27, 35)});
         tileBackground.setCornerRadius(dp(15));
-        tileBackground.setStroke(dp(1), Color.argb(105, accent));
+        tileBackground.setStroke(dp(1), Color.argb(105, Color.red(accent), Color.green(accent), Color.blue(accent)));
         tile.setBackground(tileBackground);
         tile.setElevation(dp(3));
         tile.setClickable(true);
