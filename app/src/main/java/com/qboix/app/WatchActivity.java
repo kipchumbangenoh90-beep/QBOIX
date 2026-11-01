@@ -17,6 +17,9 @@ public class WatchActivity extends Activity {
     private static final UUID HR_SERVICE=UUID.fromString("0000180d-0000-1000-8000-00805f9b34fb");
     private static final UUID HR_MEASURE=UUID.fromString("00002a37-0000-1000-8000-00805f9b34fb");
     private static final UUID CCCD=UUID.fromString("00002902-0000-1000-8000-00805f9b34fb");
+    // User-confirmed GloryFit device identity. MAC is used only to recognize this paired watch during scans.
+    private static final String QXII_MAC="78:02:B7:14:96";
+    private static final String QXII_NAME="QXII (ID-AE96)";
     private BluetoothAdapter adapter;
     private BluetoothLeScanner scanner;
     private BluetoothGatt gatt;
@@ -71,14 +74,17 @@ public class WatchActivity extends Activity {
         }catch(SecurityException e){status.setText("Bluetooth permission is required.");}
     }
     private final ScanCallback callback=new ScanCallback(){
-        @Override public void onScanResult(int type,ScanResult result){BluetoothDevice d=result.getDevice();String key=d.getAddress();if(found.putIfAbsent(key,d)==null)runOnUiThread(()->addDevice(d));}
+        @Override public void onScanResult(int type,ScanResult result){BluetoothDevice d=result.getDevice();String key=d.getAddress();if(found.putIfAbsent(key,d)==null)runOnUiThread(()->addDevice(d));
+            if(QXII_MAC.equalsIgnoreCase(key))runOnUiThread(()->{stopScan("QXII detected. Connecting…");connect(d);});}
         @Override public void onScanFailed(int code){runOnUiThread(()->status.setText("Scan failed: "+code));}
     };
     private void stopScan(String message){if(!scanning)return;scanning=false;try{if(scanner!=null)scanner.stopScan(callback);}catch(SecurityException ignored){}status.setText(message);}
     private void addDevice(BluetoothDevice d){
         String name="Unknown watch";try{if(d.getName()!=null)name=d.getName();}catch(SecurityException ignored){}
+        if(QXII_MAC.equalsIgnoreCase(safeAddress(d)))name=QXII_NAME+" • "+name;
         Button b=new Button(this);b.setText(name+"  •  "+d.getAddress());devices.addView(b);b.setOnClickListener(v->connect(d));
     }
+    private String safeAddress(BluetoothDevice d){try{return d.getAddress();}catch(SecurityException e){return "";}}
     private void connect(BluetoothDevice d){
         stopScan("Connecting…");if(gatt!=null){try{gatt.close();}catch(Exception ignored){}gatt=null;}
         try{gatt=d.connectGatt(this,false,gattCallback);status.setText("Connecting to selected device…");}
