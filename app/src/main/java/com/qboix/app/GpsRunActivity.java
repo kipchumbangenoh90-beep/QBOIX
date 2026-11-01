@@ -7,6 +7,8 @@ import android.content.*;
 import android.content.pm.PackageManager;
 import android.graphics.*;
 import android.graphics.drawable.GradientDrawable;
+import android.graphics.drawable.BitmapDrawable;
+import android.graphics.drawable.LayerDrawable;
 import android.os.*;
 import android.view.*;
 import android.webkit.*;
