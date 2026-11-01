@@ -28,7 +28,11 @@ public class WatchActivity extends Activity {
     private static final UUID CCCD=UUID.fromString("00002902-0000-1000-8000-00805f9b34fb");
     // GloryFit-family data notifications. These are observed on this QX11 connection;
     // payloads are logged raw until the exact QX11 firmware packet format is verified.
+    private static final UUID GF_MAIN_SERVICE=UUID.fromString("000055ff-0000-1000-8000-00805f9b34fb");
+    private static final UUID GF_MAIN_WRITE=UUID.fromString("000033f1-0000-1000-8000-00805f9b34fb");
     private static final UUID GF_HR_NOTIFY=UUID.fromString("000033f2-0000-1000-8000-00805f9b34fb");
+    private static final UUID GF_DATA_SERVICE=UUID.fromString("000056ff-0000-1000-8000-00805f9b34fb");
+    private static final UUID GF_DATA_WRITE=UUID.fromString("000034f1-0000-1000-8000-00805f9b34fb");
     private static final UUID GF_DATA_NOTIFY=UUID.fromString("000034f2-0000-1000-8000-00805f9b34fb");
     // Address copied from the user's connected-watch screenshot.
     private static final String QXII_MAC="78:02:B7:14:AE:96";
@@ -36,6 +40,7 @@ public class WatchActivity extends Activity {
     private BluetoothAdapter adapter;
     private BluetoothLeScanner scanner;
     private BluetoothGatt gatt;
+    private BluetoothGattCharacteristic gfMainWrite,gfDataWrite;
     private LinearLayout root,deviceList;
     private TextView status,watchName,heart,oxygen,steps,calories,battery,diagnostic;
     private TextView heartState,oxygenState,stepsState,caloriesState;
@@ -238,6 +243,10 @@ public class WatchActivity extends Activity {
             if(result==BluetoothGatt.GATT_SUCCESS)handleMeasurement(c,value);
             finishGattOperation();
         }
+        @Override public void onCharacteristicWrite(BluetoothGatt source,BluetoothGattCharacteristic c,int result){
+            if(result!=BluetoothGatt.GATT_SUCCESS)runOnUiThread(()->diagnostic.setText("Watch command write failed ("+result+") for "+c.getUuid()));
+            finishGattOperation();
+        }
         @Override public void onCharacteristicChanged(BluetoothGatt source,BluetoothGattCharacteristic c){
             handleMeasurement(c,c.getValue());
         }
@@ -252,19 +261,80 @@ public class WatchActivity extends Activity {
 
     private void subscribeGloryFitChannels(BluetoothGatt source){
         int candidates=0;
-        for(BluetoothGattService service:source.getServices()){
-            for(BluetoothGattCharacteristic ch:service.getCharacteristics()){
-                UUID id=ch.getUuid();
-                if(GF_HR_NOTIFY.equals(id)||GF_DATA_NOTIFY.equals(id)){
-                    candidates++;
-                    subscribe(source,ch);
-                }
-            }
+        BluetoothGattService main=source.getService(GF_MAIN_SERVICE);
+        BluetoothGattService data=source.getService(GF_DATA_SERVICE);
+        gfMainWrite=main==null?null:main.getCharacteristic(GF_MAIN_WRITE);
+        gfDataWrite=data==null?null:data.getCharacteristic(GF_DATA_WRITE);
+        if(main!=null){
+            BluetoothGattCharacteristic notify=main.getCharacteristic(GF_HR_NOTIFY);
+            if(notify!=null){candidates++;subscribe(source,notify);}
+        }
+        if(data!=null){
+            BluetoothGattCharacteristic notify=data.getCharacteristic(GF_DATA_NOTIFY);
+            if(notify!=null){candidates++;subscribe(source,notify);}
         }
         final int count=candidates;
-        runOnUiThread(()->diagnostic.setText("GloryFit notification characteristics found: "+count+
-            ". Subscribing; raw packets will be displayed when received.\\n"+
-            "This does not yet decode steps, calories, sleep, blood pressure or oxygen."));
+        runOnUiThread(()->diagnostic.setText("GloryFit channels: 55FF="+(main!=null?"FOUND":"MISSING")+
+            ", 56FF="+(data!=null?"FOUND":"MISSING")+
+            ". Notification channels found: "+count+". Enabling subscriptions, then requesting watch data."));
+
+        if(gfMainWrite!=null){
+            enqueueGattOperation(()->{
+                try{
+                    if((gfMainWrite.getProperties()&BluetoothGattCharacteristic.PROPERTY_READ)!=0){
+                        if(!source.readCharacteristic(gfMainWrite))finishGattOperation();
+                    }else finishGattOperation();
+                }catch(SecurityException e){finishGattOperation();}
+            });
+            enqueueGattOperation(()->{
+                try{
+                    if(gfDataWrite!=null&&(gfDataWrite.getProperties()&BluetoothGattCharacteristic.PROPERTY_READ)!=0){
+                        if(!source.readCharacteristic(gfDataWrite))finishGattOperation();
+                    }else finishGattOperation();
+                }catch(SecurityException e){finishGattOperation();}
+            });
+            // Read-only requests: no watch settings are changed by these commands.
+            sendGloryFitCommand(source,0xA1);                 // firmware/version
+            sendGloryFitCommand(source,0xA2);                 // live battery
+            sendGloryFitCommand(source,0xB2,0xFA);             // step history
+            sendGloryFitCommand(source,0xF7,0xFA);             // heart-rate history
+            sendGloryFitCommand(source,0x34,0xFA);             // blood-oxygen history
+            sendGloryFitCommand(source,0x31,0x01);             // sleep history
+        }else{
+            runOnUiThread(()->diagnostic.setText("GloryFit command channel 33F1 is missing. Standard Bluetooth measurements may still work; custom history cannot be requested."));
+        }
+    }
+
+    private void sendGloryFitCommand(BluetoothGatt source,int... bytes){
+        byte[] packet=new byte[bytes.length];
+        for(int i=0;i<bytes.length;i++)packet[i]=(byte)(bytes[i]&0xff);
+        enqueueGattOperation(()->{
+            try{
+                if(gfMainWrite==null){finishGattOperation();return;}
+                int props=gfMainWrite.getProperties();
+                if((props&BluetoothGattCharacteristic.PROPERTY_WRITE_NO_RESPONSE)!=0)
+                    gfMainWrite.setWriteType(BluetoothGattCharacteristic.WRITE_TYPE_NO_RESPONSE);
+                else if((props&BluetoothGattCharacteristic.PROPERTY_WRITE)!=0)
+                    gfMainWrite.setWriteType(BluetoothGattCharacteristic.WRITE_TYPE_DEFAULT);
+                else{runOnUiThread(()->diagnostic.setText("GloryFit command characteristic is not writable."));finishGattOperation();return;}
+                gfMainWrite.setValue(packet);
+                if(!source.writeCharacteristic(gfMainWrite)){
+                    runOnUiThread(()->diagnostic.setText("Watch rejected command start: "+hex(packet)));
+                    finishGattOperation();
+                }else{
+                    runOnUiThread(()->diagnostic.setText("Requested watch data: "+hex(packet)+" • waiting for a real response."));
+                }
+            }catch(SecurityException e){
+                runOnUiThread(()->diagnostic.setText("Bluetooth permission blocked a GloryFit data request."));
+                finishGattOperation();
+            }
+        });
+    }
+
+    private String hex(byte[] data){
+        StringBuilder b=new StringBuilder();
+        for(byte value:data)b.append(String.format(Locale.US,"%02X ",value&255));
+        return b.toString().trim();
     }
 
     private void enqueueGattOperation(Runnable operation){
@@ -362,11 +432,18 @@ public class WatchActivity extends Activity {
             }
         } else if(GF_HR_NOTIFY.equals(id)||GF_DATA_NOTIFY.equals(id)){
             customPackets++;
-            StringBuilder hex=new StringBuilder();
-            for(byte b:data)hex.append(String.format(Locale.US,"%02X ",b&255));
-            String channel=GF_HR_NOTIFY.equals(id)?"GLORYFIT HR CHANNEL":"GLORYFIT DATA CHANNEL";
-            String packet=channel+" • PACKET "+customPackets+" • "+hex.toString().trim();
-            runOnUiThread(()->diagnostic.setText(packet+"\nRaw packet received; decoder not verified for QX11 firmware."));
+            String channel=GF_HR_NOTIFY.equals(id)?"55FF / 33F2":"56FF / 34F2";
+            String packet=channel+" • PACKET "+customPackets+" • "+hex(data);
+            if(GF_HR_NOTIFY.equals(id)&&data.length>=2&&(data[0]&255)==0xA2){
+                int level=data[1]&255;
+                if(level<=100)runOnUiThread(()->battery.setText("BATTERY  •  "+level+"%  •  WATCH RESPONSE (A2)"));
+                else runOnUiThread(()->battery.setText("BATTERY  •  INVALID WATCH VALUE "+level));
+            }
+            if(GF_HR_NOTIFY.equals(id)&&data.length>=3&&(data[0]&255)==0xA1){
+                String version=new String(data,1,data.length-1,java.nio.charset.StandardCharsets.US_ASCII).replace("\\u0000","").trim();
+                runOnUiThread(()->watchName.setText("QX11 • "+version));
+            }
+            runOnUiThread(()->diagnostic.setText(packet+"\nRaw GloryFit response received. QX11-specific history decoding is still marked unverified; values are not guessed."));
         }
         else if(PULSE_OX_CONTINUOUS.equals(id)||PULSE_OX_SPOT.equals(id)){
             // IEEE-11073 SFLOAT is used by the standard Pulse Oximeter service.
