@@ -37,7 +37,8 @@ public class FartlekActivity extends Activity {
     private TextView phaseText, timerText, progressText, elapsedText;
     private Button startButton, pauseButton, stopButton;
     private int sprintSeconds, recoverySeconds, targetRepetitions;
-    private int completedRepetitions, remainingSeconds, elapsedSeconds;
+    private int completedRepetitions, remainingSeconds, elapsedSeconds, phaseElapsedSeconds;
+    private final org.json.JSONArray intervalSplits = new org.json.JSONArray();
     private long workoutStartedAt;
     private boolean running = false, paused = false, recoveryPhase = false;
 
@@ -45,8 +46,10 @@ public class FartlekActivity extends Activity {
         @Override public void run() {
             if (!running || paused) return;
             elapsedSeconds++;
+            phaseElapsedSeconds++;
             remainingSeconds--;
             if (remainingSeconds <= 0) {
+                recordIntervalSplit();
                 if (!recoveryPhase) {
                     recoveryPhase = true;
                     remainingSeconds = recoverySeconds;
@@ -222,7 +225,7 @@ public class FartlekActivity extends Activity {
             Toast.makeText(this,"Each interval must be 1 second to 6 hours; repetitions 1–100.",Toast.LENGTH_LONG).show();
             return;
         }
-        completedRepetitions=0; elapsedSeconds=0; workoutStartedAt=System.currentTimeMillis(); recoveryPhase=false;
+        completedRepetitions=0; elapsedSeconds=0; phaseElapsedSeconds=0; while(intervalSplits.length()>0)intervalSplits.remove(0); workoutStartedAt=System.currentTimeMillis(); recoveryPhase=false;
         remainingSeconds=sprintSeconds; running=true; paused=false;
         setIntervalInputsEnabled(false);
         phaseText.setText("SPRINT • RUN FAST");
@@ -256,7 +259,8 @@ public class FartlekActivity extends Activity {
     private void finishWorkout() {
         handler.removeCallbacks(ticker);
         running=false; paused=false;
-        WorkoutStore.saveFartlek(this,sprintSeconds,recoverySeconds,targetRepetitions,elapsedSeconds,workoutStartedAt,System.currentTimeMillis());
+        recordIntervalSplit();
+        WorkoutStore.saveFartlek(this,sprintSeconds,recoverySeconds,completedRepetitions,elapsedSeconds,workoutStartedAt,System.currentTimeMillis(),intervalSplits);
         phaseText.setText("WORKOUT COMPLETE");
         timerText.setText("DONE");
         progressText.setText(completedRepetitions+" rounds completed");
@@ -264,6 +268,11 @@ public class FartlekActivity extends Activity {
         startButton.setText("START AGAIN");
         setIntervalInputsEnabled(true);
         Toast.makeText(this,"Fartlek workout saved on this device.",Toast.LENGTH_LONG).show();
+    }
+
+    private void recordIntervalSplit() {
+        try { org.json.JSONObject split=new org.json.JSONObject(); split.put("phase",recoveryPhase?"SPRINT":"RECOVERY"); split.put("durationSeconds",phaseElapsedSeconds); split.put("completedAtElapsedSeconds",elapsedSeconds); intervalSplits.put(split); } catch(org.json.JSONException ignored) {}
+        phaseElapsedSeconds=0;
     }
 
     private void announce(String words) {
