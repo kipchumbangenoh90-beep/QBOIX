@@ -477,7 +477,9 @@ public class WatchActivity extends Activity {
                 int bpm=data[3]&255;
                 if(bpm>0&&bpm<260)runOnUiThread(()->{heart.setText(String.valueOf(bpm));setMetricState(heartState,"LIVE DATA RECEIVED • GLORYFIT");});
             }
-            if(GF_HR_NOTIFY.equals(id)&&((data[0]&255)==0xB1||(data[0]&255)==0xB2))parseGloryFitSteps(data);
+            boolean stepsDecoded=false;
+            if(GF_HR_NOTIFY.equals(id)&&((data[0]&255)==0xB1||(data[0]&255)==0xB2))
+                stepsDecoded=parseGloryFitSteps(data);
             if(GF_HR_NOTIFY.equals(id)&&(data[0]&255)==0xFD&&data.length==14){
                 // FD realtime layout: sport type, HR, calories16, pace, steps24...
                 int bpm=data[2]&255;
@@ -501,7 +503,8 @@ public class WatchActivity extends Activity {
             }
             if(GF_HR_NOTIFY.equals(id)&&data.length>0){
                 int opcode=data[0]&255;
-                if(opcode==0xB1||opcode==0xB2)runOnUiThread(()->setMetricState(stepsState,"WATCH PACKET RECEIVED • DECODER PENDING"));
+                if((opcode==0xB1||opcode==0xB2)&&!stepsDecoded)
+                    runOnUiThread(()->setMetricState(stepsState,"STEP PACKET RECEIVED • FORMAT/DATE NOT CONFIRMED"));
                 if(opcode==0xF7)runOnUiThread(()->setMetricState(heartState,"HEART HISTORY PACKET RECEIVED"));
             }
             if(GF_DATA_NOTIFY.equals(id)&&data.length>0){
@@ -518,20 +521,31 @@ public class WatchActivity extends Activity {
                 if((flags&0x01)==0&&spo2>=0&&spo2<=100)runOnUiThread(()->{oxygen.setText(String.format(Locale.US,"%.0f%%",spo2));setMetricState(oxygenState,"DATA RECEIVED FROM WATCH");});}
         }
     }
-    private void parseGloryFitSteps(byte[] data){
-        // B1/B2 records are 18-byte hourly totals. total16 is big-endian.
-        if(data.length!=18)return;
+    private boolean parseGloryFitSteps(byte[] data){
+        // QX11 sample B1 records are 18 bytes. The captured date bytes are
+        // year-high, year-low, DAY, MONTH, HOUR (not MONTH, DAY, HOUR).
+        // Example from the user's log: B1 07 EA 0F 01 15 00 9B ...
+        // means 2026-01-15 at 21:00, with 155 steps in that hourly record.
+        // total16 at bytes 6-7 is big-endian.
+        if(data.length!=18)return false;
         int year=((data[1]&255)<<8)|(data[2]&255);
-        int month=data[3]&255, day=data[4]&255, hour=data[5]&255;
+        int day=data[3]&255, month=data[4]&255, hour=data[5]&255;
         int hourlyTotal=((data[6]&255)<<8)|(data[7]&255);
-        if(year<2020||year>2100||month<1||month>12||day<1||day>31||hour>23)return;
+        if(year<2020||year>2100||month<1||month>12||day<1||day>31||hour>23)return false;
+        Calendar recordTime=Calendar.getInstance();
+        recordTime.clear();
+        recordTime.setLenient(false);
+        recordTime.set(year,month-1,day,hour,0,0);
+        try{recordTime.getTimeInMillis();}catch(IllegalArgumentException invalidDate){return false;}
         String date=String.format(Locale.US,"%04d-%02d-%02d",year,month,day);
         String today=new java.text.SimpleDateFormat("yyyy-MM-dd",Locale.US).format(new Date());
         String key=date+"-"+String.format(Locale.US,"%02d",hour);
         hourlySteps.put(key,hourlyTotal);
         if(!date.equals(today)){
-            runOnUiThread(()->setMetricState(stepsState,"HISTORY RECEIVED • "+date+" (NOT TODAY)"));
-            return;
+            final String recordLabel=date+" "+String.format(Locale.US,"%02d:00",hour);
+            runOnUiThread(()->setMetricState(stepsState,
+                "HISTORY RECEIVED • "+recordLabel+" • "+hourlyTotal+" STEPS IN THIS HOUR (NOT TODAY)"));
+            return true;
         }
         int dailyTotal=0;
         for(Map.Entry<String,Integer> entry:hourlySteps.entrySet())
@@ -542,6 +556,7 @@ public class WatchActivity extends Activity {
             steps.setText(String.format(Locale.US,"%d",displayTotal));
             setMetricState(stepsState,"TODAY • SUM OF "+hours+" HOURLY RECORDS");
         });
+        return true;
     }
     private int countTodayHours(String date){
         int count=0;for(String key:hourlySteps.keySet())if(key.startsWith(date+"-"))count++;return count;
