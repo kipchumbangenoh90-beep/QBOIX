@@ -472,6 +472,38 @@ public class DashboardActivity extends Activity {
         addTrainingTile("CUSTOM WORKOUT", "Open GPS tracking for your own session", "06", GREY, () -> startGpsActivity("CUSTOM"));
     }
 
+    private void addTrainingTile(String title, String description, String number, int accent, Runnable action) {
+        LinearLayout card = new LinearLayout(this);
+        card.setOrientation(LinearLayout.HORIZONTAL);
+        card.setGravity(Gravity.CENTER_VERTICAL);
+        card.setPadding(dp(15), dp(14), dp(13), dp(14));
+        card.setBackground(background(CARD, 16));
+        card.setClickable(true);
+        card.setFocusable(true);
+
+        TextView index = text(number, accent, 14, true);
+        index.setGravity(Gravity.CENTER);
+        index.setBackground(background(Color.rgb(39, 40, 48), 11));
+        card.addView(index, new LinearLayout.LayoutParams(dp(43), dp(43)));
+
+        LinearLayout details = new LinearLayout(this);
+        details.setOrientation(LinearLayout.VERTICAL);
+        details.setPadding(dp(13), 0, dp(5), 0);
+        details.addView(text(title, WHITE, 14, true));
+        TextView sub = text(description, GREY, 11, false);
+        LinearLayout.LayoutParams subParams = new LinearLayout.LayoutParams(-1, -2);
+        subParams.topMargin = dp(5);
+        details.addView(sub, subParams);
+        card.addView(details, new LinearLayout.LayoutParams(0, -2, 1));
+
+        TextView arrow = text("›", accent, 24, true);
+        card.addView(arrow);
+        LinearLayout.LayoutParams params = new LinearLayout.LayoutParams(-1, -2);
+        params.bottomMargin = dp(10);
+        mainLayout.addView(card, params);
+        card.setOnClickListener(v -> action.run());
+    }
+
     // RECORDS
 
     private void showRecords() {
