@@ -33,7 +33,7 @@ public class FartlekActivity extends Activity {
     private final int GREY = Color.rgb(165,165,175);
     private final Handler handler = new Handler(Looper.getMainLooper());
 
-    private EditText sprintMinutesInput, sprintSecondsInput, recoveryMinutesInput, recoverySecondsInput, repetitionsInput;
+    private EditText sprintDurationInput, recoveryDurationInput;
     private TextView phaseText, timerText, progressText, elapsedText;
     private Button startButton, pauseButton, stopButton;
     private int sprintSeconds, recoverySeconds, targetRepetitions;
@@ -104,37 +104,19 @@ public class FartlekActivity extends Activity {
         ratioParams.topMargin = dp(18);
         root.addView(ratioLabel, ratioParams);
 
-        TextView sprintLabel = label("SPRINT DURATION", WHITE, 12, true);
-        LinearLayout.LayoutParams slp = new LinearLayout.LayoutParams(-1,-2);
-        slp.topMargin = dp(10);
-        root.addView(sprintLabel, slp);
-        LinearLayout sprintFields = new LinearLayout(this);
-        sprintFields.setOrientation(LinearLayout.HORIZONTAL);
-        sprintMinutesInput = numberField("Minutes","3");
-        sprintSecondsInput = numberField("Seconds","0");
-        sprintFields.addView(sprintMinutesInput,new LinearLayout.LayoutParams(0,dp(52),1));
-        sprintFields.addView(spaceWidth(10));
-        sprintFields.addView(sprintSecondsInput,new LinearLayout.LayoutParams(0,dp(52),1));
-        root.addView(sprintFields);
+        TextView sprintLabel = label("FAST RUN DURATION (MINUTES.SECONDS)", WHITE, 12, true);
+        LinearLayout.LayoutParams slp = new LinearLayout.LayoutParams(-1,-2); slp.topMargin=dp(10); root.addView(sprintLabel,slp);
+        sprintDurationInput = durationField("3.00");
+        root.addView(sprintDurationInput,new LinearLayout.LayoutParams(-1,dp(54)));
 
-        TextView recoveryLabel = label("RECOVERY JOG DURATION", WHITE, 12, true);
-        LinearLayout.LayoutParams rlp = new LinearLayout.LayoutParams(-1,-2);
-        rlp.topMargin = dp(10);
-        root.addView(recoveryLabel, rlp);
-        LinearLayout recoveryFields = new LinearLayout(this);
-        recoveryFields.setOrientation(LinearLayout.HORIZONTAL);
-        recoveryMinutesInput = numberField("Minutes","1");
-        recoverySecondsInput = numberField("Seconds","0");
-        recoveryFields.addView(recoveryMinutesInput,new LinearLayout.LayoutParams(0,dp(52),1));
-        recoveryFields.addView(spaceWidth(10));
-        recoveryFields.addView(recoverySecondsInput,new LinearLayout.LayoutParams(0,dp(52),1));
-        root.addView(recoveryFields);
-
-        repetitionsInput = numberField("Number of repetitions","8");
-        LinearLayout.LayoutParams repParams = new LinearLayout.LayoutParams(-1,dp(52));
-        repParams.topMargin = dp(10);
-        root.addView(repetitionsInput,repParams);
-
+        TextView recoveryLabel = label("EASY JOG DURATION (MINUTES.SECONDS)", WHITE, 12, true);
+        LinearLayout.LayoutParams rlp = new LinearLayout.LayoutParams(-1,-2); rlp.topMargin=dp(12); root.addView(recoveryLabel,rlp);
+        recoveryDurationInput = durationField("1.00");
+        root.addView(recoveryDurationInput,new LinearLayout.LayoutParams(-1,dp(54)));
+        TextView formatHint=label("Example: 3.00 = 3 minutes | 1.30 = 1 minute 30 seconds",GREY,11,false);
+        LinearLayout.LayoutParams fhp=new LinearLayout.LayoutParams(-1,-2);fhp.topMargin=dp(6);root.addView(formatHint,fhp);
+        TextView finishHint=label("No fixed 8-round limit. Tap FINISH & SAVE whenever you are done.",GREEN,11,true);
+        LinearLayout.LayoutParams fip=new LinearLayout.LayoutParams(-1,-2);fip.topMargin=dp(10);root.addView(finishHint,fip);
         LinearLayout display = new LinearLayout(this);
         display.setOrientation(LinearLayout.VERTICAL);
         display.setGravity(Gravity.CENTER);
@@ -150,7 +132,7 @@ public class FartlekActivity extends Activity {
         timerText = label("03:00",WHITE,56,true);
         timerText.setGravity(Gravity.CENTER);
         display.addView(timerText);
-        progressText = label("0 / 8 intervals",GREY,14,false);
+        progressText = label("Open session | 0 rounds complete",GREY,14,false);
         progressText.setGravity(Gravity.CENTER);
         LinearLayout.LayoutParams pp=new LinearLayout.LayoutParams(-1,-2);
         pp.topMargin=dp(14); display.addView(progressText,pp);
@@ -166,7 +148,7 @@ public class FartlekActivity extends Activity {
         controls.setOrientation(LinearLayout.HORIZONTAL);
         controls.setPadding(0,dp(10),0,0);
         pauseButton = actionButton("PAUSE",CARD,WHITE);
-        stopButton = actionButton("STOP",CARD,WHITE);
+        stopButton = actionButton("FINISH & SAVE",Color.rgb(55,190,125),BLACK);
         controls.addView(pauseButton,new LinearLayout.LayoutParams(0,dp(48),1));
         controls.addView(spaceWidth(10));
         controls.addView(stopButton,new LinearLayout.LayoutParams(0,dp(48),1));
@@ -198,7 +180,7 @@ public class FartlekActivity extends Activity {
         feedback.addView(vibrationToggle, new LinearLayout.LayoutParams(0, dp(44), 1));
         root.addView(feedback);
 
-        TextView note=label("Timer only • GPS distance and pace tracking will be added separately.",GREY,11,false);
+        TextView note=label("Fartlek interval timer | GPS map tracking is available from the other training modes.",GREY,11,false);
         note.setGravity(Gravity.CENTER);
         LinearLayout.LayoutParams np=new LinearLayout.LayoutParams(-1,-2);
         np.topMargin=dp(14); root.addView(note,np);
@@ -207,20 +189,24 @@ public class FartlekActivity extends Activity {
         updateDisplay();
     }
 
-    private EditText numberField(String hint,String value) {
-        EditText input=new EditText(this);
-        input.setSingleLine(true);
-        input.setInputType(2);
-        input.setText(value);
-        input.setHint(hint);
-        input.setHintTextColor(GREY);
-        input.setTextColor(WHITE);
-        input.setTextSize(14);
-        input.setPadding(dp(12),0,dp(12),0);
-        input.setBackground(panel());
+    private EditText durationField(String value) {
+        EditText input=new EditText(this); input.setSingleLine(true);
+        input.setInputType(android.text.InputType.TYPE_CLASS_NUMBER | android.text.InputType.TYPE_NUMBER_FLAG_DECIMAL);
+        input.setText(value); input.setHint("Minutes.Seconds"); input.setHintTextColor(GREY);
+        input.setTextColor(WHITE); input.setTextSize(18); input.setPadding(dp(14),0,dp(14),0); input.setBackground(panel());
         return input;
     }
 
+    private int parseDuration(EditText field) {
+        String value=field.getText().toString().trim();
+        if(value.isEmpty())throw new IllegalArgumentException();
+        String[] parts=value.split("\\.",-1);
+        if(parts.length>2 || parts[0].isEmpty())throw new IllegalArgumentException();
+        int minutes=Integer.parseInt(parts[0]);
+        int seconds=parts.length==1 || parts[1].isEmpty()?0:Integer.parseInt(parts[1]);
+        if(minutes<0 || seconds<0 || seconds>59)throw new IllegalArgumentException();
+        return minutes*60+seconds;
+    }
     private void startOrResume() {
         if (running && paused) {
             paused=false; startButton.setText("WORKOUT RUNNING");
@@ -229,19 +215,14 @@ public class FartlekActivity extends Activity {
         }
         if (running) return;
         try {
-            int sprintMinutes=Integer.parseInt(sprintMinutesInput.getText().toString().trim());
-            int sprintRemainder=Integer.parseInt(sprintSecondsInput.getText().toString().trim());
-            int recoveryMinutes=Integer.parseInt(recoveryMinutesInput.getText().toString().trim());
-            int recoveryRemainder=Integer.parseInt(recoverySecondsInput.getText().toString().trim());
-            if(sprintRemainder>59||recoveryRemainder>59) throw new IllegalArgumentException();
-            sprintSeconds=sprintMinutes*60+sprintRemainder;
-            recoverySeconds=recoveryMinutes*60+recoveryRemainder;
-            targetRepetitions=Integer.parseInt(repetitionsInput.getText().toString().trim());
+            sprintSeconds=parseDuration(sprintDurationInput);
+            recoverySeconds=parseDuration(recoveryDurationInput);
+            targetRepetitions=0;
         } catch(Exception e) {
-            Toast.makeText(this,"Enter valid minutes, seconds and repetitions. Seconds must be 0–59.",Toast.LENGTH_SHORT).show();
+            Toast.makeText(this,"Use minutes.seconds, for example 3.00 or 1.30. Seconds must be 00–59.",Toast.LENGTH_LONG).show();
             return;
         }
-        if(sprintSeconds<1||sprintSeconds>21600||recoverySeconds<1||recoverySeconds>21600||targetRepetitions<1||targetRepetitions>100) {
+        if(sprintSeconds<1||sprintSeconds>21600||recoverySeconds<1||recoverySeconds>21600) {
             Toast.makeText(this,"Each interval must be 1 second to 6 hours; repetitions 1–100.",Toast.LENGTH_LONG).show();
             return;
         }
@@ -283,7 +264,7 @@ public class FartlekActivity extends Activity {
         WorkoutStore.saveFartlek(this,sprintSeconds,recoverySeconds,targetRepetitions,elapsedSeconds,workoutStartedAt,System.currentTimeMillis());
         phaseText.setText("WORKOUT COMPLETE");
         timerText.setText("DONE");
-        progressText.setText(targetRepetitions+" / "+targetRepetitions+" intervals");
+        progressText.setText(completedRepetitions+" rounds completed");
         elapsedText.setText("Elapsed "+formatTime(elapsedSeconds));
         startButton.setText("START AGAIN");
         setIntervalInputsEnabled(true);
@@ -314,21 +295,15 @@ public class FartlekActivity extends Activity {
             return;
         }
         timerText.setText(formatTime(remainingSeconds));
-        progressText.setText(completedRepetitions+" / "+targetRepetitions+" intervals");
+        progressText.setText(completedRepetitions+" rounds complete | open session");
         elapsedText.setText("Elapsed "+formatTime(elapsedSeconds));
     }
 
-    private int readPreview(EditText e,int fallback) {
-        try { return Math.max(0,Integer.parseInt(e.getText().toString())); }
-        catch(Exception ex) { return fallback; }
+    private int previewDuration(EditText field,int fallback) {
+        try { return parseDuration(field); } catch(Exception e) { return fallback; }
     }
-    private int safePreviewReps() { return readPreview(repetitionsInput,8); }
     private void setIntervalInputsEnabled(boolean enabled) {
-        sprintMinutesInput.setEnabled(enabled);
-        sprintSecondsInput.setEnabled(enabled);
-        recoveryMinutesInput.setEnabled(enabled);
-        recoverySecondsInput.setEnabled(enabled);
-        repetitionsInput.setEnabled(enabled);
+        sprintDurationInput.setEnabled(enabled); recoveryDurationInput.setEnabled(enabled);
     }
     private String formatTime(int seconds) {
         return String.format(java.util.Locale.getDefault(),"%02d:%02d",seconds/60,seconds%60);
