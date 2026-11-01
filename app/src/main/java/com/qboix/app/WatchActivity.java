@@ -52,7 +52,7 @@ public class WatchActivity extends Activity {
     private long batteryReadStartedAt=0;
     private final ArrayDeque<Runnable> gattOperations=new ArrayDeque<>();
     private boolean gattOperationInFlight=false;
-    private final Set<UUID> enabledCharacteristics=Collections.synchronizedSet(new HashSet<>());
+    private final Set<UUID> enabledCharacteristics=Collections.synchronizedSet(new HashSet<>());\n    private final ArrayDeque<String> packetHistory=new ArrayDeque<>();
 
     @Override public void onCreate(Bundle state){
         super.onCreate(state);
@@ -481,6 +481,15 @@ public class WatchActivity extends Activity {
         if(mantissa==0x07FE||mantissa==0x07FF||mantissa==0x0800||mantissa==0x0801)return -1;
         return mantissa*Math.pow(10,exponent);
     }
+    private void appendPacketLog(String packet){
+        packetHistory.addFirst(packet);
+        while(packetHistory.size()>12)packetHistory.removeLast();
+        StringBuilder log=new StringBuilder("RECEIVED PACKETS • newest first\\n");
+        for(String line:packetHistory)log.append(line).append("\\n");
+        log.append("\\nRaw GloryFit responses are preserved here. QX11-specific history decoding stays unverified until packets are confirmed.");
+        diagnostic.setText(log.toString());
+    }
+
     private void setUnsupported(UUID id){
         if(HR_MEASURE.equals(id))heart.setText("N/A");
         if(PULSE_OX_CONTINUOUS.equals(id)||PULSE_OX_SPOT.equals(id))oxygen.setText("N/A");
