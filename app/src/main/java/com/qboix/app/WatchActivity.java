@@ -478,7 +478,22 @@ public class WatchActivity extends Activity {
                 if(bpm>0&&bpm<260)runOnUiThread(()->{heart.setText(String.valueOf(bpm));setMetricState(heartState,"LIVE DATA RECEIVED • GLORYFIT");});
             }
             boolean stepsDecoded=false;
-            if(GF_HR_NOTIFY.equals(id)&&((data[0]&255)==0xB1||(data[0]&255)==0xB2))
+            if(GF_HR_NOTIFY.equals(id)&&(data[0]&255)==0xB1){
+                int packetSteps=GloryFitDecoder.decodeSteps(data);
+                if(packetSteps>=0){
+                    stepsDecoded=true;
+                    String packetDate=GloryFitDecoder.decodePacketDate(data);
+                    String today=new java.text.SimpleDateFormat("yyyy-MM-dd",Locale.US).format(new Date());
+                    String state=packetDate==null?"B1 STEP FIELD RECEIVED • DATE UNAVAILABLE":
+                        (packetDate.equals(today)?"B1 STEP FIELD RECEIVED • TODAY":"B1 STEP FIELD RECEIVED • HISTORY "+packetDate);
+                    final String stateText=state;
+                    runOnUiThread(()->{
+                        steps.setText(String.valueOf(packetSteps));
+                        setMetricState(stepsState,stateText+" • VERIFY AGAINST WATCH");
+                    });
+                }
+            }
+            if(GF_HR_NOTIFY.equals(id)&&(data[0]&255)==0xB2)
                 stepsDecoded=parseGloryFitSteps(data);
             if(GF_HR_NOTIFY.equals(id)&&(data[0]&255)==0xFD&&data.length==14){
                 // FD realtime layout: sport type, HR, calories16, pace, steps24...
@@ -491,12 +506,12 @@ public class WatchActivity extends Activity {
                     if(workoutSteps>0){steps.setText(String.valueOf(workoutSteps));setMetricState(stepsState,"LIVE WORKOUT STEP COUNT");}
                 });
             }
-            if(GF_HR_NOTIFY.equals(id)&&data.length>=4&&(data[0]&255)==0x34&&(data[1]&255)==0x00){
-                int spo2=data[3]&255;
+            if(GF_HR_NOTIFY.equals(id)&&(data[0]&255)==0x34){
+                int spo2=GloryFitDecoder.decodeSpO2(data);
                 if(spo2>=70&&spo2<=100){
                     spo2SpotPending=false;spo2EarlyFailureSeen=false;
-                    runOnUiThread(()->{oxygen.setText(spo2+"%");setMetricState(oxygenState,"SPOT MEASUREMENT RECEIVED");});
-                } else if(spo2==0xFF){
+                    runOnUiThread(()->{oxygen.setText(spo2+"%");setMetricState(oxygenState,"SPOT MEASUREMENT RECEIVED • GLORYFIT");});
+                } else if(data.length>=4&&(data[3]&255)==0xFF){
                     spo2EarlyFailureSeen=true;
                     runOnUiThread(()->setMetricState(oxygenState,"MEASURING • IGNORING EARLY EMPTY RESPONSE"));
                 }
