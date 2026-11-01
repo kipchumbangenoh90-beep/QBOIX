@@ -429,7 +429,7 @@ public class WatchActivity extends Activity {
         if(source.getService(PULSE_OX_SERVICE)==null)runOnUiThread(()->oxygen.setText("N/A"));
         // Steps and calories use manufacturer-specific GloryFit data on many watches.
         // Never display a fabricated value; wait for a supported decoder.
-        runOnUiThread(()->{steps.setText("N/A");calories.setText("N/A");setMetricState(stepsState,"GLORYFIT DATA NOT DECODED");setMetricState(caloriesState,"GLORYFIT DATA NOT DECODED");});
+        runOnUiThread(()->{steps.setText("N/A");calories.setText("N/A");setMetricState(stepsState,"WAITING FOR DAILY STEP HISTORY");setMetricState(caloriesState,"NOT SENT IN DAILY SYNC • WORKOUT DATA ONLY IF PROVIDED");});
     }
 
     private void handleMeasurement(BluetoothGattCharacteristic c,byte[] data){
@@ -464,6 +464,16 @@ public class WatchActivity extends Activity {
                 if(bpm>0&&bpm<260)runOnUiThread(()->{heart.setText(String.valueOf(bpm));setMetricState(heartState,"LIVE DATA RECEIVED • GLORYFIT");});
             }
             if(GF_HR_NOTIFY.equals(id)&&((data[0]&255)==0xB1||(data[0]&255)==0xB2))parseGloryFitSteps(data);
+            if(GF_HR_NOTIFY.equals(id)&&(data[0]&255)==0xFD&&data.length==14){
+                int bpm=data[1]&255;
+                int kcal=((data[2]&255)<<8)|(data[3]&255);
+                int workoutSteps=(data[6]&255)|((data[7]&255)<<8)|((data[8]&255)<<16);
+                runOnUiThread(()->{
+                    if(bpm>0&&bpm<260){heart.setText(String.valueOf(bpm));setMetricState(heartState,"LIVE WORKOUT HEART RATE");}
+                    if(kcal>0&&kcal<20000){calories.setText(String.valueOf(kcal));setMetricState(caloriesState,"WORKOUT CALORIES RECEIVED");}
+                    if(workoutSteps>0){steps.setText(String.valueOf(workoutSteps));setMetricState(stepsState,"LIVE WORKOUT STEP COUNT");}
+                });
+            }
             if(GF_HR_NOTIFY.equals(id)&&data.length>=4&&(data[0]&255)==0x34&&(data[1]&255)==0x00){
                 int spo2=data[3]&255;
                 if(spo2>=70&&spo2<=100)runOnUiThread(()->{oxygen.setText(spo2+"%");setMetricState(oxygenState,"SPOT MEASUREMENT RECEIVED");});
