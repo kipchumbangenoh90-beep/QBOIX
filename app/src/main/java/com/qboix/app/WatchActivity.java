@@ -118,10 +118,12 @@ public class WatchActivity extends Activity {
         TextView v=label(value,Color.WHITE,27,true);
         LinearLayout.LayoutParams vp=params(-1,-2);vp.topMargin=dp(4);card.addView(v,vp);
         TextView u=label(unit,GREEN,10,false);card.addView(u);
-        if("HEART RATE".equals(title))heart=v;
-        if("BLOOD OXYGEN".equals(title))oxygen=v;
-        if("STEPS".equals(title))steps=v;
-        if("CALORIES".equals(title))calories=v;
+        TextView state=label("WAITING FOR WATCH DATA",Color.LTGRAY,9,false);
+        LinearLayout.LayoutParams stateParams=params(-1,-2);stateParams.topMargin=dp(5);card.addView(state,stateParams);
+        if("HEART RATE".equals(title)){heart=v;heartState=state;}
+        if("BLOOD OXYGEN".equals(title)){oxygen=v;oxygenState=state;}
+        if("STEPS".equals(title)){steps=v;stepsState=state;}
+        if("CALORIES".equals(title)){calories=v;caloriesState=state;}
         LinearLayout.LayoutParams p=params(-1,-2);p.setMargins(dp(4),dp(3),dp(4),dp(3));card.setLayoutParams(p);
         return card;
     }
@@ -433,7 +435,8 @@ public class WatchActivity extends Activity {
         } else if(GF_HR_NOTIFY.equals(id)||GF_DATA_NOTIFY.equals(id)){
             customPackets++;
             String channel=GF_HR_NOTIFY.equals(id)?"55FF / 33F2":"56FF / 34F2";
-            String packet=channel+" • PACKET "+customPackets+" • "+hex(data);
+            String receivedAt=new java.text.SimpleDateFormat("HH:mm:ss",Locale.US).format(new Date());
+            String packet=channel+" • PACKET "+customPackets+" • "+receivedAt+" • "+hex(data);
             if(GF_HR_NOTIFY.equals(id)&&data.length>=2&&(data[0]&255)==0xA2){
                 int level=data[1]&255;
                 if(level<=100)runOnUiThread(()->battery.setText("BATTERY  •  "+level+"%  •  WATCH RESPONSE (A2)"));
@@ -442,6 +445,20 @@ public class WatchActivity extends Activity {
             if(GF_HR_NOTIFY.equals(id)&&data.length>=3&&(data[0]&255)==0xA1){
                 String version=new String(data,1,data.length-1,java.nio.charset.StandardCharsets.US_ASCII).replace("\\u0000","").trim();
                 runOnUiThread(()->watchName.setText("QX11 • "+version));
+            }
+            if(GF_HR_NOTIFY.equals(id)&&data.length>=4&&(data[0]&255)==0xE5&&(data[1]&255)==0x11){
+                int bpm=data[3]&255;
+                if(bpm>0&&bpm<260)runOnUiThread(()->{heart.setText(String.valueOf(bpm));setMetricState(heartState,"LIVE DATA RECEIVED • GLORYFIT");});
+            }
+            if(GF_HR_NOTIFY.equals(id)&&data.length>0){
+                int opcode=data[0]&255;
+                if(opcode==0xB1||opcode==0xB2)runOnUiThread(()->setMetricState(stepsState,"WATCH PACKET RECEIVED • DECODER PENDING"));
+                if(opcode==0xF7)runOnUiThread(()->setMetricState(heartState,"HEART HISTORY PACKET RECEIVED"));
+            }
+            if(GF_DATA_NOTIFY.equals(id)&&data.length>0){
+                int opcode=data[0]&255;
+                if(opcode==0x34)runOnUiThread(()->setMetricState(oxygenState,"OXYGEN PACKET RECEIVED • DECODER PENDING"));
+                if(opcode==0x32)runOnUiThread(()->diagnostic.setText(packet+"\nSleep history packet received on the 56FF data channel."));
             }
             runOnUiThread(()->diagnostic.setText(packet+"\nRaw GloryFit response received. QX11-specific history decoding is still marked unverified; values are not guessed."));
         }
