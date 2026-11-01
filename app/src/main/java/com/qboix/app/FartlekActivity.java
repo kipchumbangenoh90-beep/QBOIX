@@ -111,7 +111,7 @@ public class FartlekActivity extends Activity {
         root.addView(recoveryDurationInput,new LinearLayout.LayoutParams(-1,dp(54)));
         TextView formatHint=label("Example: 3.00 = 3 minutes | 1.30 = 1 minute 30 seconds",GREY,11,false);
         LinearLayout.LayoutParams fhp=new LinearLayout.LayoutParams(-1,-2);fhp.topMargin=dp(6);root.addView(formatHint,fhp);
-        TextView finishHint=label("No fixed 8-round limit. Tap FINISH & SAVE whenever you are done.",GREEN,11,true);
+        TextView finishHint=label("No fixed 8-round limit. Tap FINISH & SAVE whenever you are done.",Color.rgb(55,190,125),11,true);
         LinearLayout.LayoutParams fip=new LinearLayout.LayoutParams(-1,-2);fip.topMargin=dp(10);root.addView(finishHint,fip);
         LinearLayout display = new LinearLayout(this);
         display.setOrientation(LinearLayout.VERTICAL);
