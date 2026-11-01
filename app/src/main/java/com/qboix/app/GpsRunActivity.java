@@ -444,7 +444,21 @@ public class GpsRunActivity extends Activity {
 
     private class RouteCanvas extends View{
         private JSONArray route=new JSONArray();private final Paint line=new Paint(3),dot=new Paint(3);
-        private Location userLocation;\n        RouteCanvas(Context c){super(c);setBackgroundColor(Color.WHITE);line.setColor(BLUE);line.setStrokeWidth(dp(4));line.setStyle(Paint.Style.STROKE);line.setStrokeCap(Paint.Cap.ROUND);line.setStrokeJoin(Paint.Join.ROUND);dot.setColor(BLUE);}\n        void setCurrentLocation(Location location){userLocation=new Location(location);postInvalidate();}
+        private Location userLocation;
+        RouteCanvas(Context c){
+            super(c);
+            setBackgroundColor(Color.WHITE);
+            line.setColor(BLUE);
+            line.setStrokeWidth(dp(4));
+            line.setStyle(Paint.Style.STROKE);
+            line.setStrokeCap(Paint.Cap.ROUND);
+            line.setStrokeJoin(Paint.Join.ROUND);
+            dot.setColor(BLUE);
+        }
+        void setCurrentLocation(Location location){
+            userLocation=new Location(location);
+            postInvalidate();
+        }
         void setRoute(JSONArray a){route=a;postInvalidate();}
         @Override protected void onDraw(Canvas c){super.onDraw(c);if(route.length()==0){Paint p=new Paint(3);p.setColor(Color.GRAY);p.setTextSize(dp(14));c.drawText(userLocation==null?"Waiting for GPS location…":"GPS position acquired",dp(24),dp(40),p);if(userLocation!=null){Paint userPaint=new Paint(3);userPaint.setColor(Color.rgb(22,166,106));c.drawCircle(getWidth()/2f,getHeight()/2f,dp(10),userPaint);userPaint.setColor(Color.WHITE);userPaint.setTextSize(dp(12));c.drawText(String.format(Locale.getDefault(),"%.5f, %.5f",userLocation.getLatitude(),userLocation.getLongitude()),dp(18),getHeight()/2f+dp(35),userPaint);}return;}double minLat=90,maxLat=-90,minLon=180,maxLon=-180;for(int i=0;i<route.length();i++){JSONObject o=route.optJSONObject(i);if(o==null)continue;double la=o.optDouble("lat"),lo=o.optDouble("lon");minLat=Math.min(minLat,la);maxLat=Math.max(maxLat,la);minLon=Math.min(minLon,lo);maxLon=Math.max(maxLon,lo);}float pad=dp(35),w=getWidth()-2*pad,h=getHeight()-2*pad;Path path=new Path();for(int i=0;i<route.length();i++){JSONObject o=route.optJSONObject(i);if(o==null)continue;float x=pad+(float)((o.optDouble("lon")-minLon)/Math.max(0.000001,maxLon-minLon))*w;float y=getHeight()-pad-(float)((o.optDouble("lat")-minLat)/Math.max(0.000001,maxLat-minLat))*h;if(i==0)path.moveTo(x,y);else path.lineTo(x,y);}c.drawPath(path,line);JSONObject last=route.optJSONObject(route.length()-1);if(last!=null){float x=pad+(float)((last.optDouble("lon")-minLon)/Math.max(0.000001,maxLon-minLon))*w;float y=getHeight()-pad-(float)((last.optDouble("lat")-minLat)/Math.max(0.000001,maxLat-minLat))*h;c.drawCircle(x,y,dp(7),dot);}}
     }
