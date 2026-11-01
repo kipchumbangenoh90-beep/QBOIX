@@ -33,7 +33,8 @@ public class WatchActivity extends Activity {
     private BluetoothLeScanner scanner;
     private BluetoothGatt gatt;
     private LinearLayout root,deviceList;
-    private TextView status,watchName,heart,oxygen,steps,calories,battery,diagnostic;\n    private TextView heartState,oxygenState,stepsState,caloriesState;
+    private TextView status,watchName,heart,oxygen,steps,calories,battery,diagnostic;
+    private TextView heartState,oxygenState,stepsState,caloriesState;
     private Button scanButton;
     private final Map<String,BluetoothDevice> found=new ConcurrentHashMap<>();
     private final Handler handler=new Handler(Looper.getMainLooper());
@@ -305,7 +306,8 @@ public class WatchActivity extends Activity {
         if(steps!=null)steps.setText("—");if(calories!=null)calories.setText("—");
         if(battery!=null)battery.setText("BATTERY  •  Not connected");
     }
-    private void setMetricState(TextView view,String message){if(view!=null)view.setText(message);}\n    private void setStatus(String message){if(status!=null)status.setText(message);}
+    private void setMetricState(TextView view,String message){if(view!=null)view.setText(message);}
+    private void setStatus(String message){if(status!=null)status.setText(message);}
 
     @Override protected void onDestroy(){
         stopScan("");if(gatt!=null){try{gatt.disconnect();gatt.close();}catch(SecurityException ignored){}gatt=null;}
