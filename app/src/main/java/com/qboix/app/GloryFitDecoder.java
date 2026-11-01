@@ -4,7 +4,7 @@ public final class GloryFitDecoder {
     private GloryFitDecoder() {}
     public static int decodeSteps(byte[] p) {
         if (p == null || p.length < 8 || (p[0] & 0xFF) != 0xB1) return -1;
-        return p[7] & 0xFF;
+        return ((p[6] & 0xFF) << 8) | (p[7] & 0xFF);
     }
     public static int decodeSpO2(byte[] p) {
         if (p == null || p.length < 4 || (p[0] & 0xFF) != 0x34) return -1;
