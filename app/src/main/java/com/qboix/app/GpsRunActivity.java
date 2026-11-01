@@ -278,7 +278,8 @@ public class GpsRunActivity extends Activity {
         else if ("CROSS-COUNTRY".equals(activityType)) modeChoice.setSelection(2);
         else modeChoice.setSelection(0);
         addSetting(box,"WORKOUT MODE",modeChoice);
-        trackLengthChoice=new Spinner(this);trackLengthChoice.setAdapter(new ArrayAdapter<>(this,android.R.layout.simple_spinner_dropdown_item,new String[]{"100 m","200 m","300 m","400 m","Custom track"}));addSetting(box,"TRACK LENGTH",trackLengthChoice);\n        lapAlertChoice=new Spinner(this);lapAlertChoice.setAdapter(new ArrayAdapter<>(this,android.R.layout.simple_spinner_dropdown_item,new String[]{"Every lap","Every 2 laps","Every 3 laps","Every 4 laps","Every 5 laps","Every 8 laps","Every 9 laps"}));addSetting(box,"LAP VOICE ALERT FREQUENCY",lapAlertChoice);
+        trackLengthChoice=new Spinner(this);trackLengthChoice.setAdapter(new ArrayAdapter<>(this,android.R.layout.simple_spinner_dropdown_item,new String[]{"100 m","200 m","300 m","400 m","Custom track"}));addSetting(box,"TRACK LENGTH",trackLengthChoice);
+        lapAlertChoice=new Spinner(this);lapAlertChoice.setAdapter(new ArrayAdapter<>(this,android.R.layout.simple_spinner_dropdown_item,new String[]{"Every lap","Every 2 laps","Every 3 laps","Every 4 laps","Every 5 laps","Every 8 laps","Every 9 laps"}));addSetting(box,"LAP VOICE ALERT FREQUENCY",lapAlertChoice);
         intervalChoice=new Spinner(this);intervalChoice.setAdapter(new ArrayAdapter<>(this,android.R.layout.simple_spinner_dropdown_item,new String[]{"100 m","200 m","400 m","500 m","1 km","Half mile","1 mile","Custom metres"}));intervalChoice.setSelection(4);addSetting(box,"VOICE ALERT DISTANCE",intervalChoice);
         customMetres=new EditText(this);
         customMetres.setSingleLine(true);
