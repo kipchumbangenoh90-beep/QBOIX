@@ -37,7 +37,7 @@ public class FartlekActivity extends Activity {
     private TextView phaseText, timerText, progressText, elapsedText;
     private Button startButton, pauseButton, stopButton;
     private int sprintSeconds, recoverySeconds, targetRepetitions;
-    private int completedRepetitions, remainingSeconds, elapsedSeconds;
+    private int completedRepetitions, remainingSeconds, elapsedSeconds;\n    private long workoutStartedAt;
     private boolean running = false, paused = false, recoveryPhase = false;
 
     private final Runnable ticker = new Runnable() {
@@ -244,7 +244,7 @@ public class FartlekActivity extends Activity {
             Toast.makeText(this,"Each interval must be 1 second to 6 hours; repetitions 1–100.",Toast.LENGTH_LONG).show();
             return;
         }
-        completedRepetitions=0; elapsedSeconds=0; recoveryPhase=false;
+        completedRepetitions=0; elapsedSeconds=0; workoutStartedAt=System.currentTimeMillis(); recoveryPhase=false;
         remainingSeconds=sprintSeconds; running=true; paused=false;
         setIntervalInputsEnabled(false);
         phaseText.setText("SPRINT • RUN FAST");
@@ -279,7 +279,7 @@ public class FartlekActivity extends Activity {
     private void finishWorkout() {
         handler.removeCallbacks(ticker);
         running=false; paused=false;
-        WorkoutStore.saveFartlek(this,sprintSeconds,recoverySeconds,targetRepetitions,elapsedSeconds);
+        WorkoutStore.saveFartlek(this,sprintSeconds,recoverySeconds,targetRepetitions,elapsedSeconds,workoutStartedAt,System.currentTimeMillis());
         phaseText.setText("WORKOUT COMPLETE");
         timerText.setText("DONE");
         progressText.setText(targetRepetitions+" / "+targetRepetitions+" intervals");
