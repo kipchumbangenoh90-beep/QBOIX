@@ -52,7 +52,8 @@ public class WatchActivity extends Activity {
     private long batteryReadStartedAt=0;
     private final ArrayDeque<Runnable> gattOperations=new ArrayDeque<>();
     private boolean gattOperationInFlight=false;
-    private final Set<UUID> enabledCharacteristics=Collections.synchronizedSet(new HashSet<>());\n    private final ArrayDeque<String> packetHistory=new ArrayDeque<>();
+    private final Set<UUID> enabledCharacteristics=Collections.synchronizedSet(new HashSet<>());
+    private final ArrayDeque<String> packetHistory=new ArrayDeque<>();
 
     @Override public void onCreate(Bundle state){
         super.onCreate(state);
@@ -484,9 +485,9 @@ public class WatchActivity extends Activity {
     private void appendPacketLog(String packet){
         packetHistory.addFirst(packet);
         while(packetHistory.size()>12)packetHistory.removeLast();
-        StringBuilder log=new StringBuilder("RECEIVED PACKETS • newest first\\n");
-        for(String line:packetHistory)log.append(line).append("\\n");
-        log.append("\\nRaw GloryFit responses are preserved here. QX11-specific history decoding stays unverified until packets are confirmed.");
+        StringBuilder log=new StringBuilder("RECEIVED PACKETS • newest first\n");
+        for(String line:packetHistory)log.append(line).append("\n");
+        log.append("\nRaw GloryFit responses are preserved here. QX11-specific history decoding stays unverified until packets are confirmed.");
         diagnostic.setText(log.toString());
     }
 
