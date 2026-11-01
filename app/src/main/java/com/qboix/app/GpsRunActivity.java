@@ -5,6 +5,9 @@ import android.app.Activity;
 import android.app.Dialog;
 import android.content.*;
 import android.content.pm.PackageManager;
+import android.location.Location;
+import android.location.LocationListener;
+import android.location.LocationManager;
 import android.graphics.*;
 import android.graphics.drawable.GradientDrawable;
 import android.graphics.drawable.BitmapDrawable;
@@ -137,9 +140,15 @@ public class GpsRunActivity extends Activity {
         mapWeb.getSettings().setDomStorageEnabled(true);
         mapWeb.setWebViewClient(new WebViewClient(){
             @Override public void onPageFinished(WebView v,String u){
-                mapWeb.setVisibility(View.VISIBLE);
-                fallback.setVisibility(View.GONE);
-                if(status!=null)status.setText("Online map ready");
+                mapWeb.evaluateJavascript("typeof L !== 'undefined' ? 'ready' : 'offline'", result -> {
+                    boolean ready = result != null && result.contains("ready");
+                    mapWeb.setVisibility(ready ? View.VISIBLE : View.GONE);
+                    fallback.setVisibility(ready ? View.GONE : View.VISIBLE);
+                    if (ready && currentPhoneLocation != null) {
+                        mapWeb.evaluateJavascript("setUserLocation(" + currentPhoneLocation.getLatitude() + "," + currentPhoneLocation.getLongitude() + ")", null);
+                    }
+                    if(status!=null && !active)status.setText(ready ? "Online map • GPS location active" : "Offline mode • GPS route display active");
+                });
             }
             @Override public void onReceivedError(WebView v,WebResourceRequest req,WebResourceError err){
                 if(req.isForMainFrame()){
