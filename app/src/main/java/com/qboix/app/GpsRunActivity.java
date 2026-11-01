@@ -228,17 +228,27 @@ public class GpsRunActivity extends Activity {
     private void showChoiceDialog(String title,Spinner spinner,TextView display){
         Dialog dialog=new Dialog(this);
         FrameLayout frame=new FrameLayout(this);
-        GradientDrawable bg=new GradientDrawable();
-        bg.setColor(Color.rgb(8,9,13));
-        bg.setCornerRadius(dp(24));
-        bg.setStroke(dp(1),GOLD);
-        frame.setBackground(bg);
-        frame.setClipToOutline(true);
-        GradientDrawable popupSurface=new GradientDrawable(
-            GradientDrawable.Orientation.TL_BR,
-            new int[]{0xFF171923,0xFF09090D,0xFF211B10});
-        popupSurface.setCornerRadius(dp(24));
-        frame.setBackground(popupSurface);
+        Bitmap popupBitmap=BitmapFactory.decodeResource(getResources(),R.drawable.workout_mode_popup_bg);
+        android.graphics.drawable.Drawable popupPhoto;
+        if(popupBitmap!=null){
+            BitmapDrawable photo=new BitmapDrawable(getResources(),popupBitmap);
+            photo.setGravity(Gravity.FILL);
+            GradientDrawable darkOverlay=new GradientDrawable();
+            darkOverlay.setColor(0xA609090D);
+            darkOverlay.setCornerRadius(dp(24));
+            GradientDrawable goldEdge=new GradientDrawable();
+            goldEdge.setColor(Color.TRANSPARENT);
+            goldEdge.setCornerRadius(dp(24));
+            goldEdge.setStroke(dp(1),0x667F6A35);
+            popupPhoto=new LayerDrawable(new android.graphics.drawable.Drawable[]{photo,darkOverlay,goldEdge});
+        }else{
+            GradientDrawable fallbackBackground=new GradientDrawable(
+                GradientDrawable.Orientation.TL_BR,
+                new int[]{0xFF171923,0xFF09090D,0xFF211B10});
+            fallbackBackground.setCornerRadius(dp(24));
+            popupPhoto=fallbackBackground;
+        }
+        frame.setBackground(popupPhoto);
         frame.setClipToOutline(true);
         LinearLayout options=new LinearLayout(this);
         options.setOrientation(LinearLayout.VERTICAL);
