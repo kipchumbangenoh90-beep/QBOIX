@@ -13,6 +13,9 @@ import android.view.View;
 import android.widget.LinearLayout;
 import android.widget.ScrollView;
 import android.widget.TextView;
+import android.widget.VideoView;
+import android.media.MediaPlayer;
+import android.net.Uri;
 
 
 public class DashboardActivity extends Activity {
@@ -335,51 +338,116 @@ public class DashboardActivity extends Activity {
 
         pageHeading("ACTIVITIES");
 
-        addText(
-                "Your running and workout centre.",
-                GREY, 14, false
-        );
+        addText("Your running and workout centre.", GREY, 13, false);
+        addSpace(8);
 
-        addActionCard(
-                "START GPS RUN",
-                "Record distance, pace, time and route",
-                GREEN,
-                () -> startActivity(new Intent(
-                        DashboardActivity.this, GpsRunActivity.class
-                ))
-        );
+        addActivityTile("START GPS RUN", "Record distance, pace, time and route",
+                GREEN, "▶", () -> startActivity(new Intent(
+                        DashboardActivity.this, GpsRunActivity.class)));
 
-        addActionCard(
-                "PERFORMANCE ANALYTICS",
-                "Charts, training totals, pace trends and GPS routes",
-                GOLD,
-                () -> startActivity(new Intent(DashboardActivity.this, PerformanceAnalyticsActivity.class))
-        );
+        addActivityTile("PERFORMANCE ANALYTICS", "Charts, pace trends and GPS routes",
+                BLUE, "▥", () -> startActivity(new Intent(
+                        DashboardActivity.this, PerformanceAnalyticsActivity.class)));
 
-        addActionCard(
-                "WORKOUT HISTORY",
-                "View completed Fartlek sessions saved on this phone",
-                BLUE,
-                () -> startActivity(new Intent(
-                        DashboardActivity.this, WorkoutHistoryActivity.class
-                ))
-        );
+        addActivityTile("WORKOUT HISTORY", "Your completed training sessions",
+                GOLD, "◷", () -> startActivity(new Intent(
+                        DashboardActivity.this, WorkoutHistoryActivity.class)));
 
-        addActionCard(
-                "RUNNING REPORTS",
-                "Create, download and share branded Q-BOIX PDF reports",
-                GOLD,
-                () -> startActivity(new Intent(
-                        DashboardActivity.this, WorkoutReportsActivity.class
-                ))
-        );
+        addActivityTile("RUNNING REPORTS", "Create and share Q-BOIX PDF reports",
+                Color.rgb(72, 190, 170), "▤", () -> startActivity(new Intent(
+                        DashboardActivity.this, WorkoutReportsActivity.class)));
 
-        addActionCard(
-                "PERSONAL RECORDS",
-                "View your best performances",
-                GOLD,
-                () -> showPage("Records")
-        );
+        addActivityTile("PERSONAL RECORDS", "Your best performances",
+                Color.rgb(165, 125, 235), "★", () -> showPage("Records"));
+
+        addSpace(10);
+        TextView videoTitle = text("Q-BOIX ATHLETE SHOWCASE", GOLD, 12, true);
+        videoTitle.setLetterSpacing(0.08f);
+        mainLayout.addView(videoTitle);
+
+        FrameLayout videoFrame = new FrameLayout(this);
+        GradientDrawable videoShape = background(Color.rgb(8, 12, 19), 20);
+        videoShape.setStroke(dp(1), Color.argb(150, 215, 181, 91));
+        videoFrame.setBackground(videoShape);
+        videoFrame.setClipToOutline(true);
+        videoFrame.setElevation(dp(5));
+
+        VideoView showcase = new VideoView(this);
+        FrameLayout.LayoutParams videoParams = new FrameLayout.LayoutParams(
+                -1, -1, Gravity.CENTER);
+        videoFrame.addView(showcase, videoParams);
+
+        TextView videoFallback = text("Loading Q-BOIX video…", GREY, 12, false);
+        videoFallback.setGravity(Gravity.CENTER);
+        videoFrame.addView(videoFallback, new FrameLayout.LayoutParams(
+                -1, -1, Gravity.CENTER));
+
+        showcase.setVideoURI(Uri.parse("android.resource://" +
+                getPackageName() + "/" + R.raw.activity_showcase));
+        showcase.setOnPreparedListener(player -> {
+            videoFallback.setVisibility(View.GONE);
+            player.setLooping(true);
+            showcase.start();
+        });
+        showcase.setOnErrorListener((player, what, extra) -> {
+            videoFallback.setVisibility(View.VISIBLE);
+            videoFallback.setText("Video could not be played. Check the MP4 file.");
+            return true;
+        });
+
+        LinearLayout.LayoutParams videoCardParams =
+                new LinearLayout.LayoutParams(-1, dp(205));
+        videoCardParams.topMargin = dp(9);
+        videoCardParams.bottomMargin = dp(12);
+        mainLayout.addView(videoFrame, videoCardParams);
+    }
+
+    private void addActivityTile(String title, String description,
+                                 int accent, String symbol, Runnable action) {
+        LinearLayout tile = new LinearLayout(this);
+        tile.setOrientation(LinearLayout.HORIZONTAL);
+        tile.setGravity(Gravity.CENTER_VERTICAL);
+        tile.setPadding(dp(13), dp(8), dp(13), dp(8));
+
+        GradientDrawable tileBackground = new GradientDrawable(
+                GradientDrawable.Orientation.LEFT_RIGHT,
+                new int[]{Color.argb(235, 15, 19, 28),
+                        Color.argb(218, 24, 27, 35)});
+        tileBackground.setCornerRadius(dp(15));
+        tileBackground.setStroke(dp(1), Color.argb(105, accent));
+        tile.setBackground(tileBackground);
+        tile.setElevation(dp(3));
+        tile.setClickable(true);
+        tile.setFocusable(true);
+
+        TextView icon = text(symbol, accent, 23, true);
+        icon.setGravity(Gravity.CENTER);
+        tile.addView(icon, new LinearLayout.LayoutParams(dp(38), dp(38)));
+
+        LinearLayout details = new LinearLayout(this);
+        details.setOrientation(LinearLayout.VERTICAL);
+        details.setPadding(dp(11), 0, dp(5), 0);
+
+        TextView heading = text(title, WHITE, 13, true);
+        heading.setLetterSpacing(0.025f);
+        details.addView(heading);
+        TextView sub = text(description, GREY, 10, false);
+        LinearLayout.LayoutParams subParams =
+                new LinearLayout.LayoutParams(-1, -2);
+        subParams.topMargin = dp(3);
+        details.addView(sub, subParams);
+        tile.addView(details, new LinearLayout.LayoutParams(0, -2, 1));
+
+        TextView arrow = text("›", accent, 25, true);
+        arrow.setGravity(Gravity.CENTER);
+        tile.addView(arrow, new LinearLayout.LayoutParams(dp(22), -2));
+
+        tile.setOnClickListener(v -> action.run());
+
+        LinearLayout.LayoutParams params =
+                new LinearLayout.LayoutParams(-1, dp(64));
+        params.topMargin = dp(6);
+        mainLayout.addView(tile, params);
     }
 
     // TRAINING
