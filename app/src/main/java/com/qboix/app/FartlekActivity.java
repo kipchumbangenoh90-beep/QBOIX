@@ -37,7 +37,8 @@ public class FartlekActivity extends Activity {
     private TextView phaseText, timerText, progressText, elapsedText;
     private Button startButton, pauseButton, stopButton;
     private int sprintSeconds, recoverySeconds, targetRepetitions;
-    private int completedRepetitions, remainingSeconds, elapsedSeconds;\n    private long workoutStartedAt;
+    private int completedRepetitions, remainingSeconds, elapsedSeconds;
+    private long workoutStartedAt;
     private boolean running = false, paused = false, recoveryPhase = false;
 
     private final Runnable ticker = new Runnable() {
