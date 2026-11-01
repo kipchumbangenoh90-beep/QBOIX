@@ -305,7 +305,7 @@ public class FartlekActivity extends Activity {
     }
 
     private void recordIntervalSplit() {
-        try { org.json.JSONObject split=new org.json.JSONObject(); split.put("phase",recoveryPhase?"SPRINT":"RECOVERY"); split.put("durationSeconds",phaseElapsedSeconds); split.put("completedAtElapsedSeconds",elapsedSeconds); intervalSplits.put(split); } catch(org.json.JSONException ignored) {}
+        try { org.json.JSONObject split=new org.json.JSONObject(); split.put("phase",recoveryPhase?"RECOVERY":"SPRINT"); split.put("durationSeconds",phaseElapsedSeconds); split.put("completedAtElapsedSeconds",elapsedSeconds); intervalSplits.put(split); } catch(org.json.JSONException ignored) {}
         phaseElapsedSeconds=0;
     }
 
