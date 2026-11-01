@@ -280,7 +280,7 @@ public class WatchActivity extends Activity {
         else if(PULSE_OX_CONTINUOUS.equals(id)||PULSE_OX_SPOT.equals(id)){
             // IEEE-11073 SFLOAT is used by the standard Pulse Oximeter service.
             // Do not mislabel unsupported/invalid values as a saturation percentage.
-            if(data.length>=2){int flags=data[0]&255;int raw=(data[1]&255)|((data[2]&255)<<8);double spo2=decodeSfloat(raw);
+            if(data.length>=3){int flags=data[0]&255;int raw=(data[1]&255)|((data[2]&255)<<8);double spo2=decodeSfloat(raw);
                 if((flags&0x01)==0&&spo2>=0&&spo2<=100)runOnUiThread(()->oxygen.setText(String.format(Locale.US,"%.0f%%",spo2)));}
         }
     }
