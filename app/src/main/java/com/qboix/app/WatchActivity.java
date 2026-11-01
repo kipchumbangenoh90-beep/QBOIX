@@ -26,6 +26,10 @@ public class WatchActivity extends Activity {
     private static final UUID PULSE_OX_CONTINUOUS=UUID.fromString("00002a5f-0000-1000-8000-00805f9b34fb");
     private static final UUID PULSE_OX_SPOT=UUID.fromString("00002a5e-0000-1000-8000-00805f9b34fb");
     private static final UUID CCCD=UUID.fromString("00002902-0000-1000-8000-00805f9b34fb");
+    // GloryFit-family data notifications. These are observed on this QX11 connection;
+    // payloads are logged raw until the exact QX11 firmware packet format is verified.
+    private static final UUID GF_HR_NOTIFY=UUID.fromString("000033f2-0000-1000-8000-00805f9b34fb");
+    private static final UUID GF_DATA_NOTIFY=UUID.fromString("000034f2-0000-1000-8000-00805f9b34fb");
     // Address copied from the user's connected-watch screenshot.
     private static final String QXII_MAC="78:02:B7:14:AE:96";
 
@@ -38,7 +42,7 @@ public class WatchActivity extends Activity {
     private Button scanButton;
     private final Map<String,BluetoothDevice> found=new ConcurrentHashMap<>();
     private final Handler handler=new Handler(Looper.getMainLooper());
-    private boolean scanning=false,connected=false;
+    private boolean scanning=false,connected=false;\n    private int customPackets=0;\n    private long batteryReadStartedAt=0;
     private final Set<UUID> enabledCharacteristics=Collections.synchronizedSet(new HashSet<>());
 
     @Override public void onCreate(Bundle state){
@@ -91,7 +95,7 @@ public class WatchActivity extends Activity {
         row2.addView(metric("🔥","CALORIES","—","kcal"),new LinearLayout.LayoutParams(0,-2,1));
         rp=params(-1,-2);rp.topMargin=dp(8);root.addView(row2,rp);
 
-        battery=label("BATTERY  •  Not provided",Color.LTGRAY,12,false);
+        battery=label("BATTERY  •  Not read yet",Color.LTGRAY,12,false);
         LinearLayout.LayoutParams bat=params(-1,-2);bat.topMargin=dp(15);root.addView(battery,bat);
         diagnostic=label("Waiting for watch connection.",Color.LTGRAY,11,false);
         diagnostic.setPadding(0,dp(14),0,0);root.addView(diagnostic);
@@ -207,7 +211,15 @@ public class WatchActivity extends Activity {
         @Override public void onServicesDiscovered(BluetoothGatt source,int result){
             if(result!=BluetoothGatt.GATT_SUCCESS){runOnUiThread(()->diagnostic.setText("Could not read watch services (error "+result+")."));return;}
             int serviceCount=source.getServices().size();
-            runOnUiThread(()->{setStatus("CONNECTED • "+serviceCount+" Bluetooth services discovered. Health readings are checked separately.");diagnostic.setText("A connection or discovered service does not mean health data has arrived. Each measurement below shows its own receive status.");});
+            StringBuilder inventory=new StringBuilder("GATT INVENTORY • "+serviceCount+" services\\n");
+            for(BluetoothGattService svc:source.getServices()){
+                inventory.append(svc.getUuid()).append("\\n");
+                for(BluetoothGattCharacteristic ch:svc.getCharacteristics()){
+                    inventory.append("  ").append(ch.getUuid()).append(" [")
+                        .append(ch.getProperties()).append("]\\n");
+                }
+            }
+            runOnUiThread(()->{setStatus("CONNECTED • "+serviceCount+" Bluetooth services discovered. Health readings are checked separately.");diagnostic.setText(inventory.toString()+"\\nWaiting for real measurements and GloryFit packets. No health value is assumed.");});
             readBattery(source);
             enableHeartRate(source);
             enableOxygen(source);
@@ -230,11 +242,32 @@ public class WatchActivity extends Activity {
         }
     };
 
+    private void subscribeGloryFitChannels(BluetoothGatt source){
+        int candidates=0;
+        for(BluetoothGattService service:source.getServices()){
+            for(BluetoothGattCharacteristic ch:service.getCharacteristics()){
+                UUID id=ch.getUuid();
+                if(GF_HR_NOTIFY.equals(id)||GF_DATA_NOTIFY.equals(id)){
+                    candidates++;
+                    subscribe(source,ch);
+                }
+            }
+        }
+        final int count=candidates;
+        runOnUiThread(()->diagnostic.setText("GloryFit notification characteristics found: "+count+
+            ". Subscribing; raw packets will be displayed when received.\\n"+
+            "This does not yet decode steps, calories, sleep, blood pressure or oxygen."));
+    }
+
     private void readBattery(BluetoothGatt source){
         BluetoothGattService service=source.getService(BATTERY_SERVICE);
         BluetoothGattCharacteristic c=service==null?null:service.getCharacteristic(BATTERY_LEVEL);
         if(c==null){runOnUiThread(()->battery.setText("BATTERY  •  Not provided by watch"));return;}
-        try{source.readCharacteristic(c);}catch(SecurityException ignored){}
+        batteryReadStartedAt=System.currentTimeMillis();
+        runOnUiThread(()->battery.setText("BATTERY  •  READ REQUEST SENT — WAITING"));
+        try{boolean started=source.readCharacteristic(c);
+            if(!started)runOnUiThread(()->battery.setText("BATTERY  •  READ REQUEST NOT STARTED"));
+        }catch(SecurityException ignored){runOnUiThread(()->battery.setText("BATTERY  •  READ BLOCKED BY PERMISSION"));}
     }
     private void enableHeartRate(BluetoothGatt source){
         BluetoothGattService service=source.getService(HR_SERVICE);
@@ -277,7 +310,23 @@ public class WatchActivity extends Activity {
         if(data==null||data.length==0)return;
         UUID id=c.getUuid();
         if(HR_MEASURE.equals(id))parseHeartRate(data);
-        else if(BATTERY_LEVEL.equals(id)){int level=data[0]&255;runOnUiThread(()->battery.setText("BATTERY  •  "+level+"%  •  RECEIVED FROM WATCH"));}
+        else if(BATTERY_LEVEL.equals(id)){
+            int level=data[0]&255;
+            if(level<=100){
+                long age=System.currentTimeMillis()-batteryReadStartedAt;
+                runOnUiThread(()->battery.setText("BATTERY  •  "+level+"%  •  GATT VALUE READ"+
+                    (age>=0&&age<60000?" • JUST NOW":" • CHECK FRESHNESS")));
+            }else{
+                runOnUiThread(()->battery.setText("BATTERY  •  INVALID VALUE ("+level+") — NOT TRUSTED"));
+            }
+        } else if(GF_HR_NOTIFY.equals(id)||GF_DATA_NOTIFY.equals(id)){
+            customPackets++;
+            StringBuilder hex=new StringBuilder();
+            for(byte b:data)hex.append(String.format(Locale.US,"%02X ",b&255));
+            String channel=GF_HR_NOTIFY.equals(id)?"GLORYFIT HR CHANNEL":"GLORYFIT DATA CHANNEL";
+            String packet=channel+" • PACKET "+customPackets+" • "+hex.toString().trim();
+            runOnUiThread(()->diagnostic.setText(packet+"\\nRaw packet received; decoder not verified for QX11 firmware."));
+        }
         else if(PULSE_OX_CONTINUOUS.equals(id)||PULSE_OX_SPOT.equals(id)){
             // IEEE-11073 SFLOAT is used by the standard Pulse Oximeter service.
             // Do not mislabel unsupported/invalid values as a saturation percentage.
@@ -304,7 +353,7 @@ public class WatchActivity extends Activity {
     private void resetMeasurements(){
         if(heart!=null)heart.setText("—");if(oxygen!=null)oxygen.setText("—");
         if(steps!=null)steps.setText("—");if(calories!=null)calories.setText("—");
-        if(battery!=null)battery.setText("BATTERY  •  Not connected");
+        if(battery!=null)battery.setText("BATTERY  •  Not connected"); customPackets=0;
     }
     private void setMetricState(TextView view,String message){if(view!=null)view.setText(message);}
     private void setStatus(String message){if(status!=null)status.setText(message);}
