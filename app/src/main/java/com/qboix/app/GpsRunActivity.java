@@ -90,7 +90,7 @@ public class GpsRunActivity extends Activity {
         header.setBackgroundColor(0xEE09090D);
         TextView brand=label("Q-BOIX",GOLD,20,true);
         header.addView(brand,new LinearLayout.LayoutParams(0,-2,1));
-        activityTitle=label("GPS "+activityType,Color.WHITE,18,true);
+        activityTitle=label(activityHeading(),Color.WHITE,18,true);
         header.addView(activityTitle);
         FrameLayout.LayoutParams headerParams=new FrameLayout.LayoutParams(-1,dp(58),Gravity.TOP);
         root.addView(header,headerParams);
@@ -193,7 +193,11 @@ public class GpsRunActivity extends Activity {
         TextView title=label("WORKOUT SETTINGS",Color.WHITE,17,true);
         title.setPaintFlags(title.getPaintFlags()|Paint.UNDERLINE_TEXT_FLAG);
         box.addView(title);
-        modeChoice=new Spinner(this);modeChoice.setAdapter(new ArrayAdapter<>(this,android.R.layout.simple_spinner_dropdown_item,new String[]{"Road / distance","Track workout","Cross-country"}));addSetting(box,"WORKOUT MODE",modeChoice);
+        modeChoice=new Spinner(this);modeChoice.setAdapter(new ArrayAdapter<>(this,android.R.layout.simple_spinner_dropdown_item,new String[]{"Road / distance","Track workout","Cross-country"}));
+        if ("TRACK & FIELD".equals(activityType)) modeChoice.setSelection(1);
+        else if ("CROSS-COUNTRY".equals(activityType)) modeChoice.setSelection(2);
+        else modeChoice.setSelection(0);
+        addSetting(box,"WORKOUT MODE",modeChoice);
         trackLengthChoice=new Spinner(this);trackLengthChoice.setAdapter(new ArrayAdapter<>(this,android.R.layout.simple_spinner_dropdown_item,new String[]{"100 m","200 m","300 m","400 m","Custom track"}));addSetting(box,"TRACK LENGTH",trackLengthChoice);
         intervalChoice=new Spinner(this);intervalChoice.setAdapter(new ArrayAdapter<>(this,android.R.layout.simple_spinner_dropdown_item,new String[]{"100 m","200 m","400 m","500 m","1 km","Half mile","1 mile","Custom metres"}));intervalChoice.setSelection(4);addSetting(box,"VOICE ALERT DISTANCE",intervalChoice);
         customMetres=new EditText(this);
@@ -276,12 +280,17 @@ public class GpsRunActivity extends Activity {
     private void toggleSettings(View drawer,View dim){settingsOpen=!settingsOpen;drawer.setVisibility(settingsOpen?View.VISIBLE:View.GONE);dim.setVisibility(settingsOpen?View.VISIBLE:View.GONE);drawer.bringToFront();dim.bringToFront();if(settingsOpen)drawer.bringToFront();}
     private String mapHtml(){return "<!doctype html><html><head><meta name='viewport' content='width=device-width,initial-scale=1,maximum-scale=1'><link rel='stylesheet' href='https://unpkg.com/leaflet@1.9.4/dist/leaflet.css'/><style>html,body,#map{height:100%;margin:0;background:#fff}</style></head><body><div id='map'></div><script src='https://unpkg.com/leaflet@1.9.4/dist/leaflet.js'></script><script>var map=L.map('map').setView([0.5143,35.2698],15);L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png',{maxZoom:19,attribution:'© OpenStreetMap'}).addTo(map);var line=L.polyline([],{color:'#3488ff',weight:5}).addTo(map);var marker=null;function setRoute(a){var pts=a.map(p=>[p.lat,p.lon]);line.setLatLngs(pts);if(pts.length){if(marker)marker.setLatLng(pts[pts.length-1]);else marker=L.circleMarker(pts[pts.length-1],{radius:7,color:'#fff',weight:3,fillColor:'#3488ff',fillOpacity:1}).addTo(map);map.panTo(pts[pts.length-1]);}}</script></body></html>";}
     private void updateRoute(String json){try{JSONArray a=new JSONArray(json);fallback.setRoute(a);if(mapWeb.getVisibility()==View.VISIBLE)mapWeb.evaluateJavascript("setRoute("+json+")",null);}catch(Exception ignored){}}
+    private String activityHeading(){
+        if("MARATHON".equals(activityType))return "MARATHON TRAINING";
+        if("CUSTOM".equals(activityType))return "CUSTOM GPS WORKOUT";
+        return activityType+" GPS";
+    }
     private void requestStart(){double interval=selectedInterval();if(interval<0)return;if(checkSelfPermission(Manifest.permission.ACCESS_FINE_LOCATION)!=PackageManager.PERMISSION_GRANTED){requestPermissions(new String[]{Manifest.permission.ACCESS_FINE_LOCATION,Manifest.permission.ACCESS_COARSE_LOCATION},41);return;}command(GpsTrackingService.START,interval);}
     @Override public void onRequestPermissionsResult(int r,String[] p,int[] g){super.onRequestPermissionsResult(r,p,g);if(r==41){if(g.length>0&&g[0]==PackageManager.PERMISSION_GRANTED)command(GpsTrackingService.START,selectedInterval());else status.setText("Location permission is required.");}}
     private double selectedInterval(){int pos=intervalChoice.getSelectedItemPosition();if(pos==7){try{double n=Double.parseDouble(customMetres.getText().toString());if(n>=50&&n<=100000)return n;}catch(Exception ignored){}Toast.makeText(this,"Enter a distance from 50 to 100000 metres.",Toast.LENGTH_LONG).show();return -1;}return intervals[pos];}
     private double selectedTrack(){int p=trackLengthChoice.getSelectedItemPosition();if(p<4)return new double[]{100,200,300,400}[p];try{return Double.parseDouble(customMetres.getText().toString());}catch(Exception e){return 400;}}
     private void command(String action){command(action,1000);}
-    private void command(String action,double interval){Intent i=new Intent(this,GpsTrackingService.class);i.setAction(action);if(GpsTrackingService.START.equals(action)){i.putExtra(GpsTrackingService.EXTRA_INTERVAL,interval);i.putExtra(GpsTrackingService.EXTRA_ACTIVITY_TYPE,activityType);i.putExtra(GpsTrackingService.EXTRA_TRACK_MODE,modeChoice.getSelectedItemPosition()==1);i.putExtra(GpsTrackingService.EXTRA_TRACK_LENGTH,selectedTrack());i.putExtra(GpsTrackingService.EXTRA_VOICE_ENABLED,voiceSwitch.isChecked());i.putExtra(GpsTrackingService.EXTRA_ALERTS_ENABLED,alertsSwitch.isChecked());}if(Build.VERSION.SDK_INT>=26)startForegroundService(i);else startService(i);}
+    private void command(String action,double interval){Intent i=new Intent(this,GpsTrackingService.class);i.setAction(action);if(GpsTrackingService.START.equals(action)){i.putExtra(GpsTrackingService.EXTRA_INTERVAL,interval);i.putExtra(GpsTrackingService.EXTRA_ACTIVITY_TYPE,activityType);i.putExtra(GpsTrackingService.EXTRA_TRACK_MODE,modeChoice.getSelectedItemPosition()==1 || "TRACK & FIELD".equals(activityType));i.putExtra(GpsTrackingService.EXTRA_TRACK_LENGTH,selectedTrack());i.putExtra(GpsTrackingService.EXTRA_VOICE_ENABLED,voiceSwitch.isChecked());i.putExtra(GpsTrackingService.EXTRA_ALERTS_ENABLED,alertsSwitch.isChecked());}if(Build.VERSION.SDK_INT>=26)startForegroundService(i);else startService(i);}
     @Override protected void onStart(){super.onStart();IntentFilter f=new IntentFilter(GpsTrackingService.ACTION);if(Build.VERSION.SDK_INT>=33)registerReceiver(receiver,f,Context.RECEIVER_NOT_EXPORTED);else registerReceiver(receiver,f);registered=true;}
     @Override protected void onStop(){if(registered){unregisterReceiver(receiver);registered=false;}super.onStop();}
     @Override protected void onDestroy(){if(mapWeb!=null)mapWeb.destroy();super.onDestroy();}
