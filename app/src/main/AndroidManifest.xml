@@ -1,5 +1,15 @@
 <?xml version="1.0" encoding="utf-8"?>
 <manifest xmlns:android="http://schemas.android.com/apk/res/android">
+ <uses-permission android:name="android.permission.health.READ_STEPS"/>
+ <uses-permission android:name="android.permission.health.READ_HEART_RATE"/>
+ <uses-permission android:name="android.permission.health.READ_DISTANCE"/>
+ <uses-permission android:name="android.permission.health.READ_TOTAL_CALORIES_BURNED"/>
+ <uses-permission android:name="android.permission.health.READ_EXERCISE"/>
+ <uses-permission android:name="android.permission.health.WRITE_EXERCISE"/>
+ <uses-permission android:name="android.permission.health.WRITE_DISTANCE"/>
+ <queries>
+  <package android:name="com.google.android.apps.healthdata"/>
+ </queries>
  <uses-permission android:name="android.permission.INTERNET"/>
  <uses-permission android:name="android.permission.BLUETOOTH" android:maxSdkVersion="30"/>
  <uses-permission android:name="android.permission.BLUETOOTH_ADMIN" android:maxSdkVersion="30"/>
@@ -18,6 +28,7 @@
   <activity android:name=".RegisterActivity" android:exported="false"/>
   <activity android:name=".DashboardActivity" android:exported="false"/>
   <activity android:name=".WatchActivity" android:exported="false"/>
+  <activity android:name=".HealthConnectActivity" android:exported="true"><intent-filter><action android:name="androidx.health.ACTION_SHOW_PERMISSIONS_RATIONALE"/></intent-filter></activity>
   <activity android:name=".FartlekActivity" android:exported="false"/>
   <activity android:name=".WorkoutHistoryActivity" android:exported="false"/>
   <activity android:name=".PerformanceAnalyticsActivity" android:exported="false"/>
