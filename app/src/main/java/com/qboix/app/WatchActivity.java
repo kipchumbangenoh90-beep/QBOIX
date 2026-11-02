@@ -220,6 +220,7 @@ public class WatchActivity extends Activity {
     }
 
     private void connect(BluetoothDevice device){
+        if(WatchDataStore.isConnected(this) || Qx11KeepAliveService.hasActiveConnection()){ setStatus("QX11 is already connected. Keeping the existing live session."); refreshStoredMetrics(); return; }
         stopScan("Connecting to "+(QXII_MAC.equalsIgnoreCase(safeAddress(device))?"your QXII watch":"selected device")+"…");
         if(gatt!=null){Qx11KeepAliveService.release(this,gatt);try{gatt.disconnect();gatt.close();}catch(Exception ignored){}gatt=null;}
         connected=false;gattOperations.clear();gattOperationInFlight=false;enabledCharacteristics.clear();resetMeasurements();
@@ -238,7 +239,7 @@ public class WatchActivity extends Activity {
                 gatt=source;connected=true;WatchDataStore.setConnected(WatchActivity.this,true);Qx11KeepAliveService.retain(WatchActivity.this,source);runOnUiThread(()->setStatus("Connected. Keeping the QX11 session active while you use Q-BOIX…"));
                 try{source.discoverServices();}catch(SecurityException e){runOnUiThread(()->setStatus("Connected, but service discovery permission failed."));}
             }else if(newState==BluetoothProfile.STATE_DISCONNECTED){
-                connected=false;WatchDataStore.setConnected(WatchActivity.this,false);Qx11KeepAliveService.release(WatchActivity.this,source);runOnUiThread(()->{setStatus("Watch disconnected.");resetMeasurements();});
+                connected=false;WatchDataStore.setConnected(WatchActivity.this,false);Qx11KeepAliveService.release(WatchActivity.this,source);runOnUiThread(()->{setStatus("Watch disconnected. Tap scan to reconnect.");if(scanButton!=null){scanButton.setText("SCAN FOR MY WATCH");scanButton.setEnabled(true);}resetMeasurements();});
                 try{source.close();}catch(Exception ignored){}
             }
         }
