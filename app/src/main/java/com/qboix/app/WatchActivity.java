@@ -56,6 +56,9 @@ public class WatchActivity extends Activity {
     private long gattOperationSequence=0;
     private final Set<UUID> enabledCharacteristics=Collections.synchronizedSet(new HashSet<>());
     private final ArrayDeque<String> packetHistory=new ArrayDeque<>();
+    // Independent raw capture: records every incoming GATT read/notification before decoding.
+    private int rawPacketCount=0;
+    private String diagnosticsText="";
     // B1/B2 are hourly totals; retain one value per date/hour to avoid duplicates.
     private final Map<String,Integer> hourlySteps=new LinkedHashMap<>();
     private boolean spo2SpotPending=false;
@@ -113,8 +116,15 @@ public class WatchActivity extends Activity {
 
         battery=label("BATTERY  •  Not read yet",Color.LTGRAY,12,false);
         LinearLayout.LayoutParams bat=params(-1,-2);bat.topMargin=dp(15);root.addView(battery,bat);
-        diagnostic=label("Waiting for watch connection.",Color.LTGRAY,11,false);
-        diagnostic.setPadding(0,dp(14),0,0);root.addView(diagnostic);
+        TextView rawHeading=label("RAW BLUETOOTH DIAGNOSTICS",GOLD,14,true);
+        LinearLayout.LayoutParams rawHp=params(-1,-2);rawHp.topMargin=dp(20);root.addView(rawHeading,rawHp);
+        root.addView(label("Every incoming GATT read/notification is captured before decoding, including unknown packets.",Color.LTGRAY,11,false));
+        Button copyButton=new Button(this);copyButton.setText("COPY RAW DIAGNOSTICS");
+        copyButton.setAllCaps(false);copyButton.setTextColor(Color.BLACK);copyButton.setBackground(shape(GOLD,dp(11)));
+        LinearLayout.LayoutParams cp=params(-1,dp(44));cp.topMargin=dp(8);root.addView(copyButton,cp);
+        copyButton.setOnClickListener(v->copyDiagnostics());
+        diagnostic=label("Waiting for watch connection. Raw packet capture is ready.",Color.LTGRAY,11,false);
+        diagnostic.setTextIsSelectable(true);diagnostic.setPadding(0,dp(12),0,0);root.addView(diagnostic);
     }
 
     private LinearLayout metric(String icon,String title,String value,String unit){
@@ -455,6 +465,8 @@ public class WatchActivity extends Activity {
     }
 
     private void handleMeasurement(BluetoothGattCharacteristic c,byte[] data){
+        // Capture before decoding: unknown formats and empty responses remain visible.
+        recordRawPacket(c,data);
         if(data==null||data.length==0)return;
         UUID id=c.getUuid();
         if(HR_MEASURE.equals(id))parseHeartRate(data);
@@ -590,13 +602,43 @@ public class WatchActivity extends Activity {
         if(mantissa==0x07FE||mantissa==0x07FF||mantissa==0x0800||mantissa==0x0801)return -1;
         return mantissa*Math.pow(10,exponent);
     }
+    private void recordRawPacket(BluetoothGattCharacteristic c,byte[] data){
+        rawPacketCount++;
+        String time=new java.text.SimpleDateFormat("yyyy-MM-dd HH:mm:ss.SSS",Locale.US).format(new Date());
+        String service="unknown";
+        try{if(c.getService()!=null)service=c.getService().getUuid().toString();}catch(Exception ignored){}
+        String bytes=data==null?"<null>":hex(data);
+        int length=data==null?0:data.length;
+        String entry="#"+rawPacketCount+" • "+time+" • INCOMING GATT DATA\\n"+
+            "SERVICE: "+service+"\\nCHARACTERISTIC: "+c.getUuid()+"\\nLENGTH: "+length+" bytes\\nRAW HEX: "+(bytes.isEmpty()?"<empty>":bytes);
+        packetHistory.addFirst(entry);
+        while(packetHistory.size()>40)packetHistory.removeLast();
+        renderRawDiagnostics();
+    }
+    private void recordDiagnosticEvent(String event){
+        String time=new java.text.SimpleDateFormat("HH:mm:ss.SSS",Locale.US).format(new Date());
+        packetHistory.addFirst(time+" • EVENT • "+event);
+        while(packetHistory.size()>40)packetHistory.removeLast();
+        renderRawDiagnostics();
+    }
+    private void renderRawDiagnostics(){
+        StringBuilder log=new StringBuilder("RAW RECEIVE CAPTURE • "+rawPacketCount+" PACKETS\\n");
+        log.append("Each entry includes the GATT service, characteristic, byte length and original HEX bytes.\\n");
+        log.append("Unknown packets are retained; a received packet does not automatically mean it was decoded.\\n\\n");
+        for(String line:packetHistory)log.append(line).append("\\n\\n");
+        diagnosticsText=log.toString();
+        runOnUiThread(()->diagnostic.setText(diagnosticsText));
+    }
     private void appendPacketLog(String packet){
-        packetHistory.addFirst(packet);
-        while(packetHistory.size()>12)packetHistory.removeLast();
-        StringBuilder log=new StringBuilder("RECEIVED PACKETS • newest first\n");
-        for(String line:packetHistory)log.append(line).append("\n");
-        log.append("\nRaw GloryFit responses are preserved here. QX11-specific history decoding stays unverified until packets are confirmed.");
-        diagnostic.setText(log.toString());
+        // Preserve decoder notes alongside the independent raw capture.
+        recordDiagnosticEvent("DECODE NOTE • "+packet);
+    }
+    private void copyDiagnostics(){
+        android.content.ClipboardManager clipboard=(android.content.ClipboardManager)getSystemService(CLIPBOARD_SERVICE);
+        if(clipboard==null){setStatus("Clipboard is unavailable.");return;}
+        String text=diagnosticsText.isEmpty()?"No incoming packets captured yet. Connect the QX11 and wait for data.":diagnosticsText;
+        clipboard.setPrimaryClip(android.content.ClipData.newPlainText("Q-BOIX raw Bluetooth diagnostics",text));
+        setStatus("Raw diagnostics copied. Paste them into this chat when ready.");
     }
 
     private void setUnsupported(UUID id){
@@ -607,6 +649,7 @@ public class WatchActivity extends Activity {
         if(heart!=null)heart.setText("—");if(oxygen!=null)oxygen.setText("—");
         if(steps!=null)steps.setText("—");if(calories!=null)calories.setText("—");
         if(battery!=null)battery.setText("BATTERY  •  Not connected"); customPackets=0;
+        rawPacketCount=0;packetHistory.clear();diagnosticsText="";
     }
     private void setMetricState(TextView view,String message){if(view!=null)view.setText(message);}
     private void setStatus(String message){if(status!=null)status.setText(message);}
