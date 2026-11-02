@@ -224,17 +224,17 @@ public class WatchActivity extends Activity {
             watchName.setText(QXII_MAC.equalsIgnoreCase(safeAddress(device))
                 ?"QX11_AE96 • HELLO_WATCH • V006927"
                 :"SELECTED BLUETOOTH WATCH");
-            gatt=device.connectGatt(this,false,gattCallback);
+            WatchDataStore.setConnected(this,false);\n            gatt=device.connectGatt(this,false,gattCallback);
         }catch(SecurityException e){setStatus("Android denied Bluetooth connection permission.");}
     }
 
     private final BluetoothGattCallback gattCallback=new BluetoothGattCallback(){
         @Override public void onConnectionStateChange(BluetoothGatt source,int statusCode,int newState){
             if(newState==BluetoothProfile.STATE_CONNECTED){
-                gatt=source;connected=true;runOnUiThread(()->setStatus("Connected. Reading available watch measurements…"));
+                gatt=source;connected=true;WatchDataStore.setConnected(WatchActivity.this,true);runOnUiThread(()->setStatus("Connected. Reading available watch measurements…"));
                 try{source.discoverServices();}catch(SecurityException e){runOnUiThread(()->setStatus("Connected, but service discovery permission failed."));}
             }else if(newState==BluetoothProfile.STATE_DISCONNECTED){
-                connected=false;runOnUiThread(()->{setStatus("Watch disconnected.");resetMeasurements();});
+                connected=false;WatchDataStore.setConnected(WatchActivity.this,false);runOnUiThread(()->{setStatus("Watch disconnected.");resetMeasurements();});
                 try{source.close();}catch(Exception ignored){}
             }
         }
@@ -315,7 +315,7 @@ public class WatchActivity extends Activity {
             // records. Removing these two unnecessary GATT operations speeds sync.
             // Read-only requests: no watch settings are changed by these commands.
             sendGloryFitCommand(source,0xA1);                 // firmware/version
-            sendGloryFitCommand(source,0xA2);                 // restore the earlier QX11 battery response path
+            // A2 was repeatedly captured as constant 0x47 on this QX11; do not treat it as battery.
             // A2 returned the same 0x47 value in repeated captures; it is NOT a verified battery reading.
             // Experimental read-only daily aggregate query documented on a related
             // GloryFit/Moyoung watch. QX11 V006927 support is NOT yet confirmed.
@@ -495,7 +495,7 @@ public class WatchActivity extends Activity {
         recordRawPacket(c,data);
         if(data==null||data.length==0)return;
         UUID id=c.getUuid();
-        if(HR_MEASURE.equals(id))parseHeartRate(data);
+        if(HR_MEASURE.equals(id)){\n            Qx11DataEngine.Candidate candidate=Qx11DataEngine.standardHeartRate(data);\n            if(candidate!=null)publishHeart(candidate.value,candidate.engine);\n        }
         else if(BATTERY_LEVEL.equals(id)){
             int level=data[0]&255;
             if(level<=100){
@@ -613,9 +613,9 @@ public class WatchActivity extends Activity {
         if(data.length<2)return;int flags=data[0]&255;
         if((flags&1)!=0&&data.length<3)return;
         int bpm=(flags&1)==0?(data[1]&255):((data[2]&255)<<8)|(data[1]&255);
-        if(bpm>0&&bpm<260)runOnUiThread(()->{heart.setText(String.valueOf(bpm));setMetricState(heartState,"LIVE DATA RECEIVED • BPM");});
+        if(bpm>0&&bpm<260)publishHeart(bpm,"BLE 2A37");
     }
-    private double decodeSfloat(int raw){
+    private void publishHeart(int bpm,String source){\n        WatchDataStore.put(this,"heart",bpm,source);\n        runOnUiThread(()->{heart.setText(String.valueOf(bpm));setMetricState(heartState,"LIVE • "+source);});\n    }\n    private double decodeSfloat(int raw){
         int mantissa=raw&0x0FFF;if((mantissa&0x0800)!=0)mantissa|=0xFFFFF000;
         int exponent=(raw>>12)&0x0F;if((exponent&0x08)!=0)exponent|=0xFFFFFFF0;
         if(mantissa==0x07FE||mantissa==0x07FF||mantissa==0x0800||mantissa==0x0801)return -1;
