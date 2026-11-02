@@ -390,23 +390,23 @@ public class DashboardActivity extends Activity {
         addSpace(8);
 
         addActivityTile("START GPS RUN", "Record distance, pace, time and route",
-                GREEN, "▶", () -> startActivity(new Intent(
+                GREEN, "🏃‍♂️", () -> startActivity(new Intent(
                         DashboardActivity.this, GpsRunActivity.class)));
 
         addActivityTile("PERFORMANCE ANALYTICS", "Charts, pace trends and GPS routes",
-                BLUE, "▥", () -> startActivity(new Intent(
+                BLUE, "📊", () -> startActivity(new Intent(
                         DashboardActivity.this, PerformanceAnalyticsActivity.class)));
 
         addActivityTile("WORKOUT HISTORY", "Your completed training sessions",
-                GOLD, "◷", () -> startActivity(new Intent(
+                GOLD, "🕘", () -> startActivity(new Intent(
                         DashboardActivity.this, WorkoutHistoryActivity.class)));
 
         addActivityTile("RUNNING REPORTS", "Create and share Q-BOIX PDF reports",
-                Color.rgb(72, 190, 170), "▤", () -> startActivity(new Intent(
+                Color.rgb(72, 190, 170), "📋", () -> startActivity(new Intent(
                         DashboardActivity.this, WorkoutReportsActivity.class)));
 
         addActivityTile("PERSONAL RECORDS", "Your best performances",
-                Color.rgb(165, 125, 235), "★", () -> showPage("Records"));
+                Color.rgb(165, 125, 235), "🏆", () -> showPage("Records"));
 
         addSpace(10);
 
@@ -461,49 +461,74 @@ public class DashboardActivity extends Activity {
 
     private void addActivityTile(String title, String description,
                                  int accent, String symbol, Runnable action) {
-        LinearLayout tile = new LinearLayout(this);
-        tile.setOrientation(LinearLayout.HORIZONTAL);
-        tile.setGravity(Gravity.CENTER_VERTICAL);
-        tile.setPadding(dp(13), dp(8), dp(13), dp(8));
+        FrameLayout tile = new FrameLayout(this);
+        tile.setClipToOutline(true);
+        tile.setElevation(dp(4));
 
-        GradientDrawable tileBackground = new GradientDrawable(
+        int sceneRes;
+        if (title.contains("GPS RUN")) sceneRes = R.drawable.qboix_home_run;
+        else if (title.contains("ANALYTICS")) sceneRes = R.drawable.performance_analytics_bg;
+        else if (title.contains("HISTORY")) sceneRes = R.drawable.qboix_home_jog;
+        else if (title.contains("REPORTS")) sceneRes = R.drawable.qboix_home_walk;
+        else sceneRes = R.drawable.home_runner_bg;
+
+        GradientDrawable tileShape = background(Color.rgb(10, 18, 28), 18);
+        tileShape.setStroke(dp(1), Color.argb(155,
+                Color.red(accent), Color.green(accent), Color.blue(accent)));
+        tile.setBackground(tileShape);
+
+        ImageView scene = new ImageView(this);
+        scene.setImageResource(sceneRes);
+        scene.setScaleType(ImageView.ScaleType.CENTER_CROP);
+        tile.addView(scene, new FrameLayout.LayoutParams(-1, -1));
+
+        View shade = new View(this);
+        shade.setBackground(new GradientDrawable(
                 GradientDrawable.Orientation.LEFT_RIGHT,
-                new int[]{Color.argb(235, 15, 19, 28),
-                        Color.argb(218, 24, 27, 35)});
-        tileBackground.setCornerRadius(dp(15));
-        tileBackground.setStroke(dp(1), Color.argb(105, Color.red(accent), Color.green(accent), Color.blue(accent)));
-        tile.setBackground(tileBackground);
-        tile.setElevation(dp(3));
-        tile.setClickable(true);
-        tile.setFocusable(true);
+                new int[]{Color.argb(225, 4, 10, 18),
+                        Color.argb(175, 5, 13, 22), Color.argb(85, 5, 12, 20)}));
+        tile.addView(shade, new FrameLayout.LayoutParams(-1, -1));
 
-        TextView icon = text(symbol, accent, 23, true);
-        icon.setGravity(Gravity.CENTER);
-        tile.addView(icon, new LinearLayout.LayoutParams(dp(38), dp(38)));
+        LinearLayout content = new LinearLayout(this);
+        content.setOrientation(LinearLayout.HORIZONTAL);
+        content.setGravity(Gravity.CENTER_VERTICAL);
+        content.setPadding(dp(15), dp(9), dp(13), dp(9));
+
+        TextView emoji = text(symbol, WHITE, 29, true);
+        emoji.setGravity(Gravity.CENTER);
+        GradientDrawable emojiBg = background(
+                Color.argb(115, Color.red(accent), Color.green(accent), Color.blue(accent)), 15);
+        emojiBg.setStroke(dp(1), Color.argb(170, 255, 255, 255));
+        emoji.setBackground(emojiBg);
+        content.addView(emoji, new LinearLayout.LayoutParams(dp(53), dp(53)));
 
         LinearLayout details = new LinearLayout(this);
         details.setOrientation(LinearLayout.VERTICAL);
-        details.setPadding(dp(11), 0, dp(5), 0);
+        details.setPadding(dp(13), 0, dp(5), 0);
 
         TextView heading = text(title, WHITE, 13, true);
-        heading.setLetterSpacing(0.025f);
+        heading.setLetterSpacing(0.035f);
         details.addView(heading);
-        TextView sub = text(description, GREY, 10, false);
-        LinearLayout.LayoutParams subParams =
-                new LinearLayout.LayoutParams(-1, -2);
-        subParams.topMargin = dp(3);
+
+        TextView sub = text(description, Color.rgb(225, 231, 238), 10, false);
+        LinearLayout.LayoutParams subParams = new LinearLayout.LayoutParams(-1, -2);
+        subParams.topMargin = dp(4);
         details.addView(sub, subParams);
-        tile.addView(details, new LinearLayout.LayoutParams(0, -2, 1));
+        content.addView(details, new LinearLayout.LayoutParams(0, -2, 1));
 
-        TextView arrow = text("›", accent, 25, true);
+        TextView arrow = text("›", GOLD, 27, true);
         arrow.setGravity(Gravity.CENTER);
-        tile.addView(arrow, new LinearLayout.LayoutParams(dp(22), -2));
+        content.addView(arrow, new LinearLayout.LayoutParams(dp(24), -2));
 
+        tile.addView(content, new FrameLayout.LayoutParams(-1, -1));
+        tile.setClickable(true);
+        tile.setFocusable(true);
+        tile.setContentDescription(title + ". " + description);
         tile.setOnClickListener(v -> action.run());
 
-        LinearLayout.LayoutParams params =
-                new LinearLayout.LayoutParams(-1, dp(64));
-        params.topMargin = dp(6);
+        LinearLayout.LayoutParams params = new LinearLayout.LayoutParams(-1, dp(88));
+        params.topMargin = dp(7);
+        params.bottomMargin = dp(5);
         mainLayout.addView(tile, params);
     }
 
