@@ -16,6 +16,7 @@ import android.os.*;
 import android.view.*;
 import android.webkit.*;
 import android.widget.*;
+import android.speech.tts.TextToSpeech;
 import org.json.*;
 import java.util.*;
 
@@ -27,6 +28,8 @@ public class GpsRunActivity extends Activity {
     private EditText customMetres;
     private Switch voiceSwitch,alertsSwitch;
     private boolean active,paused,registered,voiceEnabled=true,alertsEnabled=true,settingsOpen;
+    private TextToSpeech voicePreview;
+    private boolean voicePreviewReady;
     private String activityType="RUN";
     private WebView mapWeb;
     private RouteCanvas fallback;
@@ -82,6 +85,7 @@ public class GpsRunActivity extends Activity {
         activityType=getIntent().getStringExtra("activity_type");
         if(activityType==null)activityType="RUN";
         buildScreen();
+        voicePreview=new TextToSpeech(this,result->{voicePreviewReady=result==TextToSpeech.SUCCESS;if(voicePreviewReady){int lang=voicePreview.setLanguage(Locale.getDefault());if(lang==TextToSpeech.LANG_MISSING_DATA||lang==TextToSpeech.LANG_NOT_SUPPORTED)voicePreview.setLanguage(Locale.US);voicePreview.setSpeechRate(0.95f);}});
         prepareAutomaticLocation();
     }
 
@@ -295,7 +299,8 @@ public class GpsRunActivity extends Activity {
         box.addView(customMetres,new LinearLayout.LayoutParams(-1,dp(48)));
         voiceSwitch=new Switch(this);voiceSwitch.setText("Voice assistant");voiceSwitch.setTextColor(Color.WHITE);voiceSwitch.setChecked(true);box.addView(voiceSwitch);
         alertsSwitch=new Switch(this);alertsSwitch.setText("Distance voice alerts");alertsSwitch.setTextColor(Color.WHITE);alertsSwitch.setChecked(true);box.addView(alertsSwitch);
-        TextView note=label("Settings apply when the next activity starts.",GREY,10,false);box.addView(note);
+        Button testVoice=new Button(this);testVoice.setText("TEST VOICE");testVoice.setAllCaps(false);testVoice.setOnClickListener(v->{if(voicePreviewReady&&voicePreview!=null)voicePreview.speak("Q BOIX voice assistant is ready. Distance one kilometre. Time five minutes. Pace five minutes per kilometre.",TextToSpeech.QUEUE_FLUSH,null,"qboix_voice_test");else Toast.makeText(this,"Voice engine is still starting. Try again in a moment.",Toast.LENGTH_SHORT).show();});box.addView(testVoice,new LinearLayout.LayoutParams(-1,dp(44)));
+         TextView note=label("Voice uses your phone language and a clear, slightly slower speaking speed. Settings apply when the next activity starts.",GREY,10,false);box.addView(note);
         return box;
     }
     private void addSetting(LinearLayout box,String title,Spinner spinner){
@@ -399,7 +404,8 @@ public class GpsRunActivity extends Activity {
             startPreviewLocationUpdates();
         }
     }
-    @Override protected void onDestroy(){if(mapWeb!=null)mapWeb.destroy();super.onDestroy();}
+    @Override protected void onDestroy(){
+        if(voicePreview!=null){voicePreview.stop();voicePreview.shutdown();}if(mapWeb!=null)mapWeb.destroy();super.onDestroy();}
     private TextView metric(LinearLayout row,String value,String caption){
         LinearLayout card=new LinearLayout(this);
         card.setOrientation(LinearLayout.VERTICAL);
