@@ -166,7 +166,7 @@ public class HealthConnectActivity extends ComponentActivity {
 
     private void openHealthConnectSettings() {
         try {
-            Intent intent = new Intent(HealthConnectClient.ACTION_HEALTH_CONNECT_SETTINGS);
+            Intent intent = new Intent("android.health.connect.action.HEALTH_CONNECT_SETTINGS");
             startActivity(intent);
         } catch (Exception e) {
             openHealthConnectStore();
