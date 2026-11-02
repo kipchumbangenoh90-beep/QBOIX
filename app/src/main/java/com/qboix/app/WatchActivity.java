@@ -211,7 +211,9 @@ public class WatchActivity extends Activity {
         if(gatt!=null){try{gatt.disconnect();gatt.close();}catch(Exception ignored){}gatt=null;}
         connected=false;gattOperations.clear();gattOperationInFlight=false;enabledCharacteristics.clear();resetMeasurements();
         try{
-            watchName.setText(QXII_MAC.equalsIgnoreCase(safeAddress(device))?"QXII • GLORYFIT WATCH":"SELECTED BLUETOOTH WATCH");
+            watchName.setText(QXII_MAC.equalsIgnoreCase(safeAddress(device))
+                ?"QX11_AE96 • HELLO_WATCH • V006927"
+                :"SELECTED BLUETOOTH WATCH");
             gatt=device.connectGatt(this,false,gattCallback);
         }catch(SecurityException e){setStatus("Android denied Bluetooth connection permission.");}
     }
@@ -237,7 +239,11 @@ public class WatchActivity extends Activity {
                         .append(ch.getProperties()).append("]\n");
                 }
             }
-            runOnUiThread(()->{setStatus("CONNECTED • "+serviceCount+" Bluetooth services discovered. Health readings are checked separately.");diagnostic.setText(inventory.toString()+"\nWaiting for real measurements and GloryFit packets. No health value is assumed.");});
+            runOnUiThread(()->{
+                setStatus("CONNECTED • QX11_AE96 • "+serviceCount+" Bluetooth services discovered");
+                diagnostic.setText("WATCH INFO (from device Info screen) • NAME: QX11_AE96 • MODEL: HELLO_WATCH • FIRMWARE: V006927\n"+
+                    inventory.toString()+"\nReading live values and available history. Old-dated records stay separate from today's totals.");
+            });
             readBattery(source);
             enableHeartRate(source);
             enableOxygen(source);
