@@ -13,9 +13,6 @@ import android.view.View;
 import android.widget.LinearLayout;
 import android.widget.ScrollView;
 import android.widget.TextView;
-import android.widget.VideoView;
-import android.media.MediaPlayer;
-import android.net.Uri;
 import org.json.JSONArray;
 import org.json.JSONObject;
 import java.text.SimpleDateFormat;
@@ -412,45 +409,54 @@ public class DashboardActivity extends Activity {
                 Color.rgb(165, 125, 235), "★", () -> showPage("Records"));
 
         addSpace(10);
-        TextView videoTitle = text("Q-BOIX ATHLETE SHOWCASE", GOLD, 12, true);
-        videoTitle.setLetterSpacing(0.08f);
-        mainLayout.addView(videoTitle);
 
-        FrameLayout videoFrame = new FrameLayout(this);
-        GradientDrawable videoShape = background(Color.rgb(8, 12, 19), 20);
-        videoShape.setStroke(dp(1), Color.argb(150, 215, 181, 91));
-        videoFrame.setBackground(videoShape);
-        videoFrame.setClipToOutline(true);
-        videoFrame.setElevation(dp(5));
+        LinearLayout motivationCard = new LinearLayout(this);
+        motivationCard.setOrientation(LinearLayout.VERTICAL);
+        motivationCard.setGravity(Gravity.CENTER);
+        motivationCard.setPadding(dp(20), dp(19), dp(20), dp(19));
+        GradientDrawable motivationBackground = new GradientDrawable(
+                GradientDrawable.Orientation.TL_BR,
+                new int[]{Color.rgb(10, 31, 48), Color.rgb(12, 57, 48),
+                        Color.rgb(20, 25, 38)});
+        motivationBackground.setCornerRadius(dp(20));
+        motivationBackground.setStroke(dp(1), Color.argb(170, 215, 181, 91));
+        motivationCard.setBackground(motivationBackground);
+        motivationCard.setElevation(dp(5));
 
-        VideoView showcase = new VideoView(this);
-        FrameLayout.LayoutParams videoParams = new FrameLayout.LayoutParams(
-                -1, -1, Gravity.CENTER);
-        videoFrame.addView(showcase, videoParams);
+        TextView runnerEmoji = text("🏃‍♂️  ⚡  🏅", GOLD, 27, true);
+        runnerEmoji.setGravity(Gravity.CENTER);
+        motivationCard.addView(runnerEmoji);
 
-        TextView videoFallback = text("Loading Q-BOIX video…", GREY, 12, false);
-        videoFallback.setGravity(Gravity.CENTER);
-        videoFrame.addView(videoFallback, new FrameLayout.LayoutParams(
-                -1, -1, Gravity.CENTER));
+        TextView motivationTitle = text("Q-BOIX MINDSET", GOLD, 11, true);
+        motivationTitle.setLetterSpacing(0.16f);
+        LinearLayout.LayoutParams motivationTitleParams =
+                new LinearLayout.LayoutParams(-2, -2);
+        motivationTitleParams.topMargin = dp(12);
+        motivationCard.addView(motivationTitle, motivationTitleParams);
 
-        showcase.setVideoURI(Uri.parse("android.resource://" +
-                getPackageName() + "/" + R.raw.activity_showcase));
-        showcase.setOnPreparedListener(player -> {
-            videoFallback.setVisibility(View.GONE);
-            player.setLooping(true);
-            showcase.start();
-        });
-        showcase.setOnErrorListener((player, what, extra) -> {
-            videoFallback.setVisibility(View.VISIBLE);
-            videoFallback.setText("Video could not be played. Check the MP4 file.");
-            return true;
-        });
+        TextView motivationQuote = text(
+                "Your pace. Your path. Your progress.\nNever stop moving.",
+                WHITE, 19, true);
+        motivationQuote.setGravity(Gravity.CENTER);
+        motivationQuote.setLineSpacing(dp(4), 1.0f);
+        LinearLayout.LayoutParams quoteParams =
+                new LinearLayout.LayoutParams(-1, -2);
+        quoteParams.topMargin = dp(8);
+        motivationCard.addView(motivationQuote, quoteParams);
 
-        LinearLayout.LayoutParams videoCardParams =
-                new LinearLayout.LayoutParams(-1, dp(205));
-        videoCardParams.topMargin = dp(9);
-        videoCardParams.bottomMargin = dp(12);
-        mainLayout.addView(videoFrame, videoCardParams);
+        TextView motivationFooter = text(
+                "DISCIPLINE TODAY • STRONGER TOMORROW", GREY, 9, true);
+        motivationFooter.setLetterSpacing(0.08f);
+        LinearLayout.LayoutParams footerParams =
+                new LinearLayout.LayoutParams(-2, -2);
+        footerParams.topMargin = dp(13);
+        motivationCard.addView(motivationFooter, footerParams);
+
+        LinearLayout.LayoutParams motivationParams =
+                new LinearLayout.LayoutParams(-1, dp(190));
+        motivationParams.topMargin = dp(9);
+        motivationParams.bottomMargin = dp(12);
+        mainLayout.addView(motivationCard, motivationParams);
     }
 
     private void addActivityTile(String title, String description,
