@@ -52,6 +52,8 @@ public class WatchActivity extends Activity {
     private long batteryReadStartedAt=0;
     private final ArrayDeque<Runnable> gattOperations=new ArrayDeque<>();
     private boolean gattOperationInFlight=false;
+    private Runnable activeGattTimeout;
+    private long gattOperationSequence=0;
     private final Set<UUID> enabledCharacteristics=Collections.synchronizedSet(new HashSet<>());
     private final ArrayDeque<String> packetHistory=new ArrayDeque<>();
     // B1/B2 are hourly totals; retain one value per date/hour to avoid duplicates.
@@ -286,20 +288,8 @@ public class WatchActivity extends Activity {
             ". Notification channels found: "+count+". Enabling subscriptions, then requesting watch data."));
 
         if(gfMainWrite!=null){
-            enqueueGattOperation(()->{
-                try{
-                    if((gfMainWrite.getProperties()&BluetoothGattCharacteristic.PROPERTY_READ)!=0){
-                        if(!source.readCharacteristic(gfMainWrite))finishGattOperation();
-                    }else finishGattOperation();
-                }catch(SecurityException e){finishGattOperation();}
-            });
-            enqueueGattOperation(()->{
-                try{
-                    if(gfDataWrite!=null&&(gfDataWrite.getProperties()&BluetoothGattCharacteristic.PROPERTY_READ)!=0){
-                        if(!source.readCharacteristic(gfDataWrite))finishGattOperation();
-                    }else finishGattOperation();
-                }catch(SecurityException e){finishGattOperation();}
-            });
+            // Skip READs on command-write characteristics: they are not fitness
+            // records. Removing these two unnecessary GATT operations speeds sync.
             // Read-only requests: no watch settings are changed by these commands.
             sendGloryFitCommand(source,0xA1);                 // firmware/version
             sendGloryFitCommand(source,0xA2);                 // live battery
@@ -341,10 +331,10 @@ public class WatchActivity extends Activity {
             try{
                 if(gfMainWrite==null){finishGattOperation();return;}
                 int props=gfMainWrite.getProperties();
-                if((props&BluetoothGattCharacteristic.PROPERTY_WRITE_NO_RESPONSE)!=0)
-                    gfMainWrite.setWriteType(BluetoothGattCharacteristic.WRITE_TYPE_NO_RESPONSE);
-                else if((props&BluetoothGattCharacteristic.PROPERTY_WRITE)!=0)
+                if((props&BluetoothGattCharacteristic.PROPERTY_WRITE)!=0)
                     gfMainWrite.setWriteType(BluetoothGattCharacteristic.WRITE_TYPE_DEFAULT);
+                else if((props&BluetoothGattCharacteristic.PROPERTY_WRITE_NO_RESPONSE)!=0)
+                    gfMainWrite.setWriteType(BluetoothGattCharacteristic.WRITE_TYPE_NO_RESPONSE);
                 else{runOnUiThread(()->diagnostic.setText("GloryFit command characteristic is not writable."));finishGattOperation();return;}
                 gfMainWrite.setValue(packet);
                 if(!source.writeCharacteristic(gfMainWrite)){
@@ -377,12 +367,24 @@ public class WatchActivity extends Activity {
         if(gattOperationInFlight||gattOperations.isEmpty()||gatt==null||!connected)return;
         Runnable next=gattOperations.removeFirst();
         gattOperationInFlight=true;
+        final long operationId=++gattOperationSequence;
+        activeGattTimeout=()->{
+            if(gattOperationInFlight&&operationId==gattOperationSequence){
+                gattOperationInFlight=false;
+                activeGattTimeout=null;
+                runOnUiThread(()->diagnostic.setText("A Bluetooth operation timed out. Continuing with the next queued request."));
+                handler.postDelayed(this::runNextGattOperation,100);
+            }
+        };
+        handler.postDelayed(activeGattTimeout,8000);
         next.run();
     }
     private void finishGattOperation(){
         handler.post(()->{
+            if(!gattOperationInFlight)return;
+            if(activeGattTimeout!=null){handler.removeCallbacks(activeGattTimeout);activeGattTimeout=null;}
             gattOperationInFlight=false;
-            runNextGattOperation();
+            handler.postDelayed(this::runNextGattOperation,80);
         });
     }
 
@@ -470,8 +472,10 @@ public class WatchActivity extends Activity {
                 else runOnUiThread(()->battery.setText("BATTERY  •  INVALID WATCH VALUE "+level));
             }
             if(GF_HR_NOTIFY.equals(id)&&data.length>=3&&(data[0]&255)==0xA1){
-                String version=new String(data,1,data.length-1,java.nio.charset.StandardCharsets.US_ASCII).replace("\\u0000","").trim();
-                runOnUiThread(()->watchName.setText("QX11 • "+version));
+                String info=new String(data,1,data.length-1,java.nio.charset.StandardCharsets.US_ASCII).replace("\u0000","").trim();
+                java.util.regex.Matcher firmware=java.util.regex.Pattern.compile("V[0-9]{4,}").matcher(info);
+                String version=firmware.find()?firmware.group():"INFO RECEIVED";
+                runOnUiThread(()->watchName.setText("QX11_AE96 • HELLO_WATCH • "+version));
             }
             if(GF_HR_NOTIFY.equals(id)&&data.length>=4&&(data[0]&255)==0xE5&&(data[1]&255)==0x11){
                 int bpm=data[3]&255;
@@ -506,7 +510,10 @@ public class WatchActivity extends Activity {
                 int opcode=data[0]&255;
                 if((opcode==0xB1||opcode==0xB2)&&!stepsDecoded)
                     runOnUiThread(()->setMetricState(stepsState,"STEP PACKET RECEIVED • FORMAT/DATE NOT CONFIRMED"));
-                if(opcode==0xF7)runOnUiThread(()->setMetricState(heartState,"HEART HISTORY PACKET RECEIVED"));
+                if(opcode==0xF7)runOnUiThread(()->{
+                    if("—".contentEquals(heart.getText())||"N/A".contentEquals(heart.getText()))
+                        setMetricState(heartState,"HEART HISTORY PACKET RECEIVED • VALUE NOT DECODED");
+                });
             }
             if(GF_DATA_NOTIFY.equals(id)&&data.length>0){
                 int opcode=data[0]&255;
