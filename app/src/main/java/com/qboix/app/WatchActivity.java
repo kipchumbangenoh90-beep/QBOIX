@@ -683,8 +683,23 @@ public class WatchActivity extends Activity {
     private void setMetricState(TextView view,String message){if(view!=null)view.setText(message);}
     private void setStatus(String message){if(status!=null)status.setText(message);}
 
+    @Override protected void onResume(){
+        super.onResume();
+        // The watch connection belongs to this Activity instance. Returning from
+        // Dashboard must reuse the existing GATT session, not start a new one.
+        if(gatt!=null && connected){
+            setStatus("CONNECTED • QX11_AE96 • Live watch session retained");
+        }else if(WatchDataStore.isConnected(this)){
+            setStatus("Watch session is restoring. Check Bluetooth connection.");
+        }
+    }
+
     @Override protected void onDestroy(){
-        stopScan("");if(gatt!=null){try{gatt.disconnect();gatt.close();}catch(SecurityException ignored){}gatt=null;}
+        // Do not disconnect or close GATT here. Android normally keeps this
+        // Activity stopped in the back stack when the user opens Dashboard or
+        // another Q-BOIX screen. Closing GATT here caused every navigation away
+        // from Watch to drop the watch connection.
+        stopScan("");
         super.onDestroy();
     }
 }
