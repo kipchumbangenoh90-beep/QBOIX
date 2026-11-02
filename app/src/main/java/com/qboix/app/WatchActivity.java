@@ -279,7 +279,14 @@ public class WatchActivity extends Activity {
             handleMeasurement(c,value);
         }
         @Override public void onDescriptorWrite(BluetoothGatt source,BluetoothGattDescriptor descriptor,int statusCode){
-            if(statusCode!=BluetoothGatt.GATT_SUCCESS)runOnUiThread(()->diagnostic.setText("Watch connected, but a live measurement subscription was rejected."));
+            UUID characteristicUuid=descriptor.getCharacteristic().getUuid();
+            if(statusCode==BluetoothGatt.GATT_SUCCESS){
+                enabledCharacteristics.add(characteristicUuid);
+                runOnUiThread(()->recordDiagnosticEvent("NOTIFICATIONS ENABLED • "+characteristicUuid));
+            }else{
+                enabledCharacteristics.remove(characteristicUuid);
+                runOnUiThread(()->diagnostic.setText("Watch rejected notification subscription for "+characteristicUuid+" (status "+statusCode+")."));
+            }
             finishGattOperation();
         }
     };
@@ -308,7 +315,7 @@ public class WatchActivity extends Activity {
             // records. Removing these two unnecessary GATT operations speeds sync.
             // Read-only requests: no watch settings are changed by these commands.
             sendGloryFitCommand(source,0xA1);                 // firmware/version
-            sendGloryFitCommand(source,0xA2);                 // live battery
+            // A2 returned the same 0x47 value in repeated captures; it is NOT a verified battery reading.
             // Experimental read-only daily aggregate query documented on a related
             // GloryFit/Moyoung watch. QX11 V006927 support is NOT yet confirmed.
             // Keep its reply in raw diagnostics until its exact response is verified.
@@ -412,6 +419,8 @@ public class WatchActivity extends Activity {
         BluetoothGattService service=source.getService(BATTERY_SERVICE);
         BluetoothGattCharacteristic c=service==null?null:service.getCharacteristic(BATTERY_LEVEL);
         if(c==null){runOnUiThread(()->battery.setText("BATTERY  •  Not provided by watch"));return;}
+        // QX11 exposes Battery Level as READ + NOTIFY. Subscribe and read through the same queue.
+        subscribe(source,c);
         enqueueGattOperation(()->{
             batteryReadStartedAt=System.currentTimeMillis();
             battery.setText("BATTERY  •  READ REQUEST SENT — WAITING");
@@ -440,25 +449,37 @@ public class WatchActivity extends Activity {
         subscribe(source,c);
     }
     private void subscribe(BluetoothGatt source,BluetoothGattCharacteristic c){
-        try{
-            int props=c.getProperties();
-            boolean notify=(props&BluetoothGattCharacteristic.PROPERTY_NOTIFY)!=0;
-            boolean indicate=(props&BluetoothGattCharacteristic.PROPERTY_INDICATE)!=0;
-            if(!notify&&!indicate){runOnUiThread(()->setUnsupported(c.getUuid()));return;}
-            if(!source.setCharacteristicNotification(c,true)){runOnUiThread(()->setUnsupported(c.getUuid()));return;}
-            BluetoothGattDescriptor d=c.getDescriptor(CCCD);
-            if(d==null){runOnUiThread(()->setUnsupported(c.getUuid()));return;}
-            enqueueGattOperation(()->{
-                try{
-                    d.setValue(notify?BluetoothGattDescriptor.ENABLE_NOTIFICATION_VALUE:BluetoothGattDescriptor.ENABLE_INDICATION_VALUE);
-                    if(source.writeDescriptor(d))enabledCharacteristics.add(c.getUuid());
-                    else{runOnUiThread(()->diagnostic.setText("Could not start notification subscription for "+c.getUuid()));finishGattOperation();}
-                }catch(SecurityException e){
-                    runOnUiThread(()->diagnostic.setText("Bluetooth permission blocked a notification subscription."));
+        int props=c.getProperties();
+        boolean notify=(props&BluetoothGattCharacteristic.PROPERTY_NOTIFY)!=0;
+        boolean indicate=(props&BluetoothGattCharacteristic.PROPERTY_INDICATE)!=0;
+        if(!notify&&!indicate){runOnUiThread(()->setUnsupported(c.getUuid()));return;}
+        BluetoothGattDescriptor d=c.getDescriptor(CCCD);
+        if(d==null){runOnUiThread(()->setUnsupported(c.getUuid()));return;}
+        enqueueGattOperation(()->{
+            try{
+                // Local routing and remote CCCD configuration are both required.
+                if(!source.setCharacteristicNotification(c,true)){
+                    runOnUiThread(()->diagnostic.setText("Android could not enable local notifications for "+c.getUuid()));
+                    finishGattOperation();return;
+                }
+                byte[] value=notify?BluetoothGattDescriptor.ENABLE_NOTIFICATION_VALUE:BluetoothGattDescriptor.ENABLE_INDICATION_VALUE;
+                boolean started;
+                if(Build.VERSION.SDK_INT>=33){
+                    started=source.writeDescriptor(d,value)==BluetoothStatusCodes.SUCCESS;
+                }else{
+                    d.setValue(value);
+                    started=source.writeDescriptor(d);
+                }
+                if(!started){
+                    runOnUiThread(()->diagnostic.setText("Could not start notification subscription for "+c.getUuid()));
                     finishGattOperation();
                 }
-            });
-        }catch(SecurityException e){runOnUiThread(()->diagnostic.setText("Bluetooth permission prevented reading a watch measurement."));}
+                // Do NOT mark enabled here. onDescriptorWrite confirms the remote CCCD write.
+            }catch(SecurityException e){
+                runOnUiThread(()->diagnostic.setText("Bluetooth permission blocked a notification subscription."));
+                finishGattOperation();
+            }
+        });
     }
     private void markUnavailableIfMissing(BluetoothGatt source){
         if(source.getService(HR_SERVICE)==null)runOnUiThread(()->heart.setText("N/A"));
@@ -488,11 +509,7 @@ public class WatchActivity extends Activity {
             String channel=GF_HR_NOTIFY.equals(id)?"55FF / 33F2":"56FF / 34F2";
             String receivedAt=new java.text.SimpleDateFormat("HH:mm:ss",Locale.US).format(new Date());
             String packet=channel+" • PACKET "+customPackets+" • "+receivedAt+" • "+hex(data);
-            if(GF_HR_NOTIFY.equals(id)&&data.length>=2&&(data[0]&255)==0xA2){
-                int level=data[1]&255;
-                if(level<=100)runOnUiThread(()->battery.setText("BATTERY  •  "+level+"%  •  WATCH RESPONSE (A2)"));
-                else runOnUiThread(()->battery.setText("BATTERY  •  INVALID WATCH VALUE "+level));
-            }
+            // Do not interpret A2 replies as battery: the QX11 capture showed a constant 0x47.
             if(GF_HR_NOTIFY.equals(id)&&data.length>=3&&(data[0]&255)==0xA1){
                 String info=new String(data,1,data.length-1,java.nio.charset.StandardCharsets.US_ASCII).replace("\u0000","").trim();
                 java.util.regex.Matcher firmware=java.util.regex.Pattern.compile("V[0-9]{4,}").matcher(info);
