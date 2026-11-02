@@ -786,6 +786,18 @@ public class DashboardActivity extends Activity {
 
         pageHeading("SETTINGS");
 
+        addActionCard(
+                "CONNECTED APPS & HEALTH DATA",
+                "Connect Q-BOIX with Health Connect and manage fitness data permissions for compatible apps.",
+                BLUE,
+                () -> startActivity(new Intent(DashboardActivity.this, HealthConnectActivity.class))
+        );
+
+        addSimpleCard(
+                "APP CATEGORY",
+                "Q-BOIX • Health & Fitness. Fitness tracking, running, training and wellness data."
+        );
+
         addSimpleCard(
                 "ACCOUNT",
                 "Account and security settings."
