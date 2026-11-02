@@ -16,6 +16,8 @@ public class Qx11KeepAliveService extends Service {
     private static WatchActivity retainedOwner;
     private static BluetoothGatt retainedGatt;
 
+    public static synchronized boolean hasActiveConnection() { return retainedOwner != null && retainedGatt != null; }
+
     public static synchronized void retain(WatchActivity owner, BluetoothGatt gatt) {
         retainedOwner = owner;
         retainedGatt = gatt;
