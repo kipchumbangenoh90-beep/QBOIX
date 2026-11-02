@@ -309,6 +309,10 @@ public class WatchActivity extends Activity {
             // Read-only requests: no watch settings are changed by these commands.
             sendGloryFitCommand(source,0xA1);                 // firmware/version
             sendGloryFitCommand(source,0xA2);                 // live battery
+            // Experimental read-only daily aggregate query documented on a related
+            // GloryFit/Moyoung watch. QX11 V006927 support is NOT yet confirmed.
+            // Keep its reply in raw diagnostics until its exact response is verified.
+            sendGloryFitCommand(source,0x26,0x01);              // candidate daily activity summary
             sendGloryFitCommand(source,0xB2,0xFA);             // step history
             sendGloryFitCommand(source,0xF7,0xFA);             // heart-rate history
             sendGloryFitCommand(source,0x34,0xFA);             // SpO2 history
