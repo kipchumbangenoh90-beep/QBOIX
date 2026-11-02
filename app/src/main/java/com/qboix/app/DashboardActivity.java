@@ -269,6 +269,50 @@ public class DashboardActivity extends Activity {
         addText("Welcome, " + name, GREY, 12, false);
     }
 
+    private void addConnectedWatchBar() {
+        if (!WatchDataStore.isConnected(this)) return;
+        LinearLayout card = new LinearLayout(this);
+        card.setOrientation(LinearLayout.VERTICAL);
+        card.setPadding(dp(12), dp(10), dp(12), dp(10));
+        GradientDrawable bg = background(Color.argb(235, 8, 24, 35), 16);
+        bg.setStroke(dp(1), Color.rgb(55, 190, 125));
+        card.setBackground(bg);
+        TextView heading = text("QX11 CONNECTED  •  LIVE WATCH", GREEN, 10, true);
+        card.addView(heading);
+        LinearLayout metrics = new LinearLayout(this);
+        metrics.setOrientation(LinearLayout.HORIZONTAL);
+        addWatchMetric(metrics, "♥", "HEART", "heart", "BPM");
+        addWatchMetric(metrics, "◉", "SpO₂", "spo2", "%");
+        addWatchMetric(metrics, "↗", "STEPS", "steps", "");
+        addWatchMetric(metrics, "⚡", "CAL", "calories", "kcal");
+        LinearLayout.LayoutParams mp = new LinearLayout.LayoutParams(-1, -2);
+        mp.topMargin = dp(7);
+        card.addView(metrics, mp);
+        LinearLayout.LayoutParams cp = new LinearLayout.LayoutParams(-1, -2);
+        cp.topMargin = dp(9);
+        mainLayout.addView(card, cp);
+    }
+
+    private void addWatchMetric(LinearLayout row, String icon, String title, String key, String unit) {
+        LinearLayout cell = new LinearLayout(this);
+        cell.setOrientation(LinearLayout.VERTICAL);
+        cell.setGravity(Gravity.CENTER);
+        TextView label = text(title, GREY, 9, true);
+        label.setGravity(Gravity.CENTER);
+        cell.addView(label);
+        int value = WatchDataStore.get(this, key);
+        String shown = value < 0 ? "—" : String.valueOf(value);
+        TextView number = text(shown, WHITE, 19, true);
+        number.setGravity(Gravity.CENTER);
+        cell.addView(number);
+        if (!unit.isEmpty()) {
+            TextView suffix = text(unit, GREEN, 8, false);
+            suffix.setGravity(Gravity.CENTER);
+            cell.addView(suffix);
+        }
+        row.addView(cell, new LinearLayout.LayoutParams(0, -2, 1));
+    }
+
     private void startGpsActivity(String activityType) {
         Intent intent = new Intent(DashboardActivity.this, GpsRunActivity.class);
         intent.putExtra("activity_type", activityType);
