@@ -2,7 +2,13 @@ package com.qboix.app;
 
 import android.app.*;
 import android.bluetooth.BluetoothGatt;
+import android.bluetooth.BluetoothAdapter;
+import android.bluetooth.BluetoothDevice;
+import android.bluetooth.BluetoothManager;
+import android.bluetooth.BluetoothProfile;
+import android.content.Context;
 import android.content.Intent;
+import java.util.List;
 import android.os.Build;
 import android.os.IBinder;
 
@@ -16,7 +22,55 @@ public class Qx11KeepAliveService extends Service {
     private static WatchActivity retainedOwner;
     private static BluetoothGatt retainedGatt;
 
-    public static synchronized boolean hasActiveConnection() { return retainedOwner != null && retainedGatt != null; }
+    public static synchronized boolean hasActiveConnection() {
+        return retainedOwner != null && retainedGatt != null;
+    }
+
+    /** Verify the GATT device is still connected; a saved flag is not proof. */
+    public static synchronized boolean hasActiveConnection(Context context) {
+        if (retainedOwner == null || retainedGatt == null) return false;
+        try {
+            BluetoothManager manager = (BluetoothManager) context.getSystemService(Context.BLUETOOTH_SERVICE);
+            BluetoothAdapter adapter = manager == null ? null : manager.getAdapter();
+            if (adapter == null || !adapter.isEnabled()) {
+                clearStaleConnection(context);
+                return false;
+            }
+            BluetoothDevice device = retainedGatt.getDevice();
+            List<BluetoothDevice> connected = manager.getConnectedDevices(BluetoothProfile.GATT);
+            boolean found = false;
+            if (device != null && connected != null) {
+                String address = device.getAddress();
+                for (BluetoothDevice item : connected) {
+                    if (item != null && address.equalsIgnoreCase(item.getAddress())) {
+                        found = true;
+                        break;
+                    }
+                }
+            }
+            if (!found) clearStaleConnection(context);
+            return found;
+        } catch (SecurityException | IllegalStateException e) {
+            clearStaleConnection(context);
+            return false;
+        }
+    }
+
+    private static void clearStaleConnection(Context context) {
+        WatchActivity owner = retainedOwner;
+        BluetoothGatt gatt = retainedGatt;
+        retainedOwner = null;
+        retainedGatt = null;
+        WatchDataStore.setConnected(context, false);
+        if (gatt != null) {
+            try { gatt.disconnect(); } catch (Exception ignored) {}
+            try { gatt.close(); } catch (Exception ignored) {}
+        }
+        if (owner != null) {
+            try { owner.runOnUiThread(owner::onWatchConnectionLost); } catch (Exception ignored) {}
+            try { owner.stopService(new Intent(owner, Qx11KeepAliveService.class)); } catch (Exception ignored) {}
+        }
+    }
 
     public static synchronized void retain(WatchActivity owner, BluetoothGatt gatt) {
         retainedOwner = owner;
