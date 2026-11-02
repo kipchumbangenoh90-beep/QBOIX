@@ -48,6 +48,7 @@ public class WatchActivity extends Activity {
     private final Map<String,BluetoothDevice> found=new ConcurrentHashMap<>();
     private final Handler handler=new Handler(Looper.getMainLooper());
     private boolean scanning=false,connected=false;
+    private final Runnable liveUiRefresh = new Runnable(){ @Override public void run(){ refreshStoredMetrics(); handler.postDelayed(this,1000); } };
     private int customPackets=0;
     private long batteryReadStartedAt=0;
     private final ArrayDeque<Runnable> gattOperations=new ArrayDeque<>();
@@ -70,7 +71,8 @@ public class WatchActivity extends Activity {
         BluetoothManager manager=(BluetoothManager)getSystemService(BLUETOOTH_SERVICE);
         adapter=manager==null?null:manager.getAdapter();
         if(adapter==null){setStatus("Bluetooth LE is not available on this phone.");return;}
-        requestBlePermissions();
+        if(WatchDataStore.isConnected(this)){ setStatus("CONNECTED • QX11_AE96 • Reusing the existing watch session"); scanButton.setText("WATCH ALREADY CONNECTED"); scanButton.setEnabled(false); refreshStoredMetrics(); } else { requestBlePermissions(); }
+        handler.post(liveUiRefresh);
     }
 
     private void buildUi(){
@@ -180,6 +182,7 @@ public class WatchActivity extends Activity {
     }
 
     private void startScan(){
+        if(WatchDataStore.isConnected(this) || Qx11KeepAliveService.hasActiveConnection()){ setStatus("Your QX11 is already connected. Reusing the live session; no second connection is needed."); refreshStoredMetrics(); return; }
         if(adapter==null||!adapter.isEnabled()){setStatus("Turn on Bluetooth on your phone first.");return;}
         if(Build.VERSION.SDK_INT>=31&&(!has(Manifest.permission.BLUETOOTH_SCAN)||!has(Manifest.permission.BLUETOOTH_CONNECT))){requestBlePermissions();return;}
         try{
@@ -674,6 +677,14 @@ public class WatchActivity extends Activity {
         if(HR_MEASURE.equals(id))heart.setText("N/A");
         if(PULSE_OX_CONTINUOUS.equals(id)||PULSE_OX_SPOT.equals(id))oxygen.setText("N/A");
     }
+    private void refreshStoredMetrics(){
+        if(heart!=null){int v=WatchDataStore.get(this,"heart");heart.setText(v<0?"—":String.valueOf(v));setMetricState(heartState,v<0?"WAITING FOR WATCH DATA":"LATEST WATCH READING");}
+        if(oxygen!=null){int v=WatchDataStore.get(this,"spo2");oxygen.setText(v<0?"—":v+"%");setMetricState(oxygenState,v<0?"WAITING FOR WATCH DATA":"LATEST SPOT MEASUREMENT");}
+        if(steps!=null){int v=WatchDataStore.get(this,"steps");steps.setText(v<0?"—":String.valueOf(v));setMetricState(stepsState,v<0?"WAITING FOR WATCH DATA":"LATEST WATCH READING");}
+        if(calories!=null){int v=WatchDataStore.get(this,"calories");calories.setText(v<0?"—":String.valueOf(v));setMetricState(caloriesState,v<0?"WAITING FOR WATCH DATA":"LATEST WATCH READING");}
+        if(battery!=null && !WatchDataStore.isConnected(this)) battery.setText("BATTERY • Watch disconnected");
+    }
+
     private void resetMeasurements(){
         if(heart!=null)heart.setText("—");if(oxygen!=null)oxygen.setText("—");
         if(steps!=null)steps.setText("—");if(calories!=null)calories.setText("—");
@@ -685,6 +696,7 @@ public class WatchActivity extends Activity {
 
     @Override protected void onResume(){
         super.onResume();
+        refreshStoredMetrics(); handler.removeCallbacks(liveUiRefresh); handler.post(liveUiRefresh);
         // The watch connection belongs to this Activity instance. Returning from
         // Dashboard must reuse the existing GATT session, not start a new one.
         if(gatt!=null && connected){
@@ -699,7 +711,7 @@ public class WatchActivity extends Activity {
         // Activity stopped in the back stack when the user opens Dashboard or
         // another Q-BOIX screen. Closing GATT here caused every navigation away
         // from Watch to drop the watch connection.
-        stopScan("");
+        stopScan(""); handler.removeCallbacks(liveUiRefresh);
         super.onDestroy();
     }
 }
