@@ -71,7 +71,7 @@ public class WatchActivity extends Activity {
         BluetoothManager manager=(BluetoothManager)getSystemService(BLUETOOTH_SERVICE);
         adapter=manager==null?null:manager.getAdapter();
         if(adapter==null){setStatus("Bluetooth LE is not available on this phone.");return;}
-        if(WatchDataStore.isConnected(this)){ setStatus("CONNECTED • QX11_AE96 • Reusing the existing watch session"); scanButton.setText("WATCH ALREADY CONNECTED"); scanButton.setEnabled(false); refreshStoredMetrics(); } else { requestBlePermissions(); }
+        if(Qx11KeepAliveService.hasActiveConnection(this)){ setStatus("CONNECTED • QX11_AE96 • Reusing the existing watch session"); scanButton.setText("WATCH ALREADY CONNECTED"); scanButton.setEnabled(false); refreshStoredMetrics(); } else { WatchDataStore.setConnected(this,false); scanButton.setText("SCAN FOR MY WATCH"); scanButton.setEnabled(true); requestBlePermissions(); }
         handler.post(liveUiRefresh);
     }
 
@@ -182,7 +182,7 @@ public class WatchActivity extends Activity {
     }
 
     private void startScan(){
-        if(WatchDataStore.isConnected(this) || Qx11KeepAliveService.hasActiveConnection()){ setStatus("Your QX11 is already connected. Reusing the live session; no second connection is needed."); refreshStoredMetrics(); return; }
+        if(Qx11KeepAliveService.hasActiveConnection(this)){ setStatus("Your QX11 is already connected. Reusing the live session; no second connection is needed."); refreshStoredMetrics(); return; }
         if(adapter==null||!adapter.isEnabled()){setStatus("Turn on Bluetooth on your phone first.");return;}
         if(Build.VERSION.SDK_INT>=31&&(!has(Manifest.permission.BLUETOOTH_SCAN)||!has(Manifest.permission.BLUETOOTH_CONNECT))){requestBlePermissions();return;}
         try{
@@ -220,7 +220,7 @@ public class WatchActivity extends Activity {
     }
 
     private void connect(BluetoothDevice device){
-        if(WatchDataStore.isConnected(this) || Qx11KeepAliveService.hasActiveConnection()){ setStatus("QX11 is already connected. Keeping the existing live session."); refreshStoredMetrics(); return; }
+        if(Qx11KeepAliveService.hasActiveConnection(this)){ setStatus("QX11 is already connected. Keeping the existing live session."); refreshStoredMetrics(); return; }
         stopScan("Connecting to "+(QXII_MAC.equalsIgnoreCase(safeAddress(device))?"your QXII watch":"selected device")+"…");
         if(gatt!=null){Qx11KeepAliveService.release(this,gatt);try{gatt.disconnect();gatt.close();}catch(Exception ignored){}gatt=null;}
         connected=false;gattOperations.clear();gattOperationInFlight=false;enabledCharacteristics.clear();resetMeasurements();
@@ -686,6 +686,20 @@ public class WatchActivity extends Activity {
         if(battery!=null && !WatchDataStore.isConnected(this)) battery.setText("BATTERY • Watch disconnected");
     }
 
+    public void onWatchConnectionLost(){
+        connected=false;
+        gatt=null;
+        gfMainWrite=null;
+        gfDataWrite=null;
+        gattOperations.clear();
+        gattOperationInFlight=false;
+        if(activeGattTimeout!=null){handler.removeCallbacks(activeGattTimeout);activeGattTimeout=null;}
+        enabledCharacteristics.clear();
+        setStatus("Watch disconnected. Tap scan to reconnect.");
+        if(scanButton!=null){scanButton.setText("SCAN FOR MY WATCH");scanButton.setEnabled(true);}
+        refreshStoredMetrics();
+    }
+
     private void resetMeasurements(){
         if(heart!=null)heart.setText("—");if(oxygen!=null)oxygen.setText("—");
         if(steps!=null)steps.setText("—");if(calories!=null)calories.setText("—");
@@ -700,10 +714,13 @@ public class WatchActivity extends Activity {
         refreshStoredMetrics(); handler.removeCallbacks(liveUiRefresh); handler.post(liveUiRefresh);
         // The watch connection belongs to this Activity instance. Returning from
         // Dashboard must reuse the existing GATT session, not start a new one.
-        if(gatt!=null && connected){
+        if(Qx11KeepAliveService.hasActiveConnection(this)){
             setStatus("CONNECTED • QX11_AE96 • Live watch session retained");
-        }else if(WatchDataStore.isConnected(this)){
-            setStatus("Watch session is restoring. Check Bluetooth connection.");
+            if(scanButton!=null){scanButton.setText("WATCH ALREADY CONNECTED");scanButton.setEnabled(false);}
+        }else{
+            WatchDataStore.setConnected(this,false);
+            setStatus("Watch disconnected. Tap scan to reconnect.");
+            if(scanButton!=null){scanButton.setText("SCAN FOR MY WATCH");scanButton.setEnabled(true);}
         }
     }
 
