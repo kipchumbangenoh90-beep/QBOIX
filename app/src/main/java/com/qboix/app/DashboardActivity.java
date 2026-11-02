@@ -334,8 +334,10 @@ public class DashboardActivity extends Activity {
         watchOxygenValue.setText(oxygen < 0 ? "—" : String.valueOf(oxygen));
         watchStepsValue.setText(steps < 0 ? "—" : String.valueOf(steps));
         watchCaloriesValue.setText(calories < 0 ? "—" : String.valueOf(calories));
+        boolean watchConnected = Qx11KeepAliveService.hasActiveConnection(this);
+        if (!watchConnected && WatchDataStore.isConnected(this)) WatchDataStore.setConnected(this, false);
         if (watchConnectionLabel != null) {
-            watchConnectionLabel.setText(WatchDataStore.isConnected(this)
+            watchConnectionLabel.setText(watchConnected
                     ? "QX11 CONNECTED  •  LIVE WATCH"
                     : "QX11 DISCONNECTED  •  LAST READINGS");
         }
