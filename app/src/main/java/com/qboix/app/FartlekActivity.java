@@ -84,7 +84,7 @@ public class FartlekActivity extends Activity {
         vibrator = (Vibrator) getSystemService(VIBRATOR_SERVICE);
         speech = new TextToSpeech(this, status -> {
             speechReady = status == TextToSpeech.SUCCESS;
-            if (speechReady) speech.setLanguage(java.util.Locale.US);
+            if (speechReady) { int language=speech.setLanguage(java.util.Locale.getDefault()); if(language==TextToSpeech.LANG_MISSING_DATA||language==TextToSpeech.LANG_NOT_SUPPORTED)speech.setLanguage(java.util.Locale.US); speech.setSpeechRate(0.95f); }
         });
         buildScreen();
     }
@@ -182,6 +182,7 @@ public class FartlekActivity extends Activity {
         feedback.addView(voiceToggle, new LinearLayout.LayoutParams(0, dp(44), 1));
         feedback.addView(vibrationToggle, new LinearLayout.LayoutParams(0, dp(44), 1));
         root.addView(feedback);
+        Button testVoice=actionButton("TEST VOICE",CARD,GOLD);LinearLayout.LayoutParams testVoiceParams=new LinearLayout.LayoutParams(-1,dp(42));testVoiceParams.topMargin=dp(4);root.addView(testVoice,testVoiceParams);testVoice.setOnClickListener(v->{if(speechReady&&speech!=null)speech.speak("Q BOIX voice assistant is ready. Sprint. Easy jog. Keep moving.",TextToSpeech.QUEUE_FLUSH,null,"qboix_fartlek_test");else Toast.makeText(this,"Voice engine is still starting. Try again in a moment.",Toast.LENGTH_SHORT).show();});
 
         TextView note=label("Fartlek interval timer | GPS map tracking is available from the other training modes.",GREY,11,false);
         note.setGravity(Gravity.CENTER);
