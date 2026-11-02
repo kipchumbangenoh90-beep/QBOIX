@@ -254,7 +254,7 @@ public class WatchActivity extends Activity {
                 diagnostic.setText("WATCH INFO (from device Info screen) • NAME: QX11_AE96 • MODEL: HELLO_WATCH • FIRMWARE: V006927\n"+
                     inventory.toString()+"\nReading live values and available history. Old-dated records stay separate from today's totals.");
             });
-            readBattery(source);
+            // QX11 V006927 battery is read through its GloryFit A2 reply, not the generic 2A19 value.
             enableHeartRate(source);
             enableOxygen(source);
             subscribeGloryFitChannels(source);
@@ -315,6 +315,7 @@ public class WatchActivity extends Activity {
             // records. Removing these two unnecessary GATT operations speeds sync.
             // Read-only requests: no watch settings are changed by these commands.
             sendGloryFitCommand(source,0xA1);                 // firmware/version
+            sendGloryFitCommand(source,0xA2);                 // restore the earlier QX11 battery response path
             // A2 returned the same 0x47 value in repeated captures; it is NOT a verified battery reading.
             // Experimental read-only daily aggregate query documented on a related
             // GloryFit/Moyoung watch. QX11 V006927 support is NOT yet confirmed.
@@ -509,7 +510,12 @@ public class WatchActivity extends Activity {
             String channel=GF_HR_NOTIFY.equals(id)?"55FF / 33F2":"56FF / 34F2";
             String receivedAt=new java.text.SimpleDateFormat("HH:mm:ss",Locale.US).format(new Date());
             String packet=channel+" • PACKET "+customPackets+" • "+receivedAt+" • "+hex(data);
-            // Do not interpret A2 replies as battery: the QX11 capture showed a constant 0x47.
+            // Restore the earlier QX11 battery response path. Only accept a valid A2 percentage.
+            if(GF_HR_NOTIFY.equals(id)&&data.length>=2&&(data[0]&255)==0xA2){
+                int level=data[1]&255;
+                if(level<=100)runOnUiThread(()->battery.setText("BATTERY  •  "+level+"%  •  WATCH RESPONSE (A2)"));
+                else runOnUiThread(()->battery.setText("BATTERY  •  INVALID WATCH VALUE "+level+" • NOT TRUSTED"));
+            }
             if(GF_HR_NOTIFY.equals(id)&&data.length>=3&&(data[0]&255)==0xA1){
                 String info=new String(data,1,data.length-1,java.nio.charset.StandardCharsets.US_ASCII).replace("\u0000","").trim();
                 java.util.regex.Matcher firmware=java.util.regex.Pattern.compile("V[0-9]{4,}").matcher(info);
