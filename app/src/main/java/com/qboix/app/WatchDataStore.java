@@ -11,5 +11,7 @@ public final class WatchDataStore {
     public static boolean isConnected(Context c) { return prefs(c).getBoolean("connected", false); }
     public static void put(Context c, String metric, int value, String source) { prefs(c).edit().putInt(metric, value).putString(metric+"_source", source).putLong(metric+"_time", System.currentTimeMillis()).apply(); }
     public static int get(Context c, String metric) { return prefs(c).getInt(metric, -1); }
+    public static long metricTime(Context c, String metric) { return prefs(c).getLong(metric+"_time", 0L); }
+    public static long connectionTime(Context c) { return prefs(c).getLong("updated", 0L); }
     public static String source(Context c, String metric) { return prefs(c).getString(metric+"_source", ""); }
 }
