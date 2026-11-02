@@ -530,15 +530,20 @@ public class WatchActivity extends Activity {
                     ((data[0]&255)==0xB1||(data[0]&255)==0xB2))
                 stepsDecoded=parseGloryFitSteps(data);
             if(GF_HR_NOTIFY.equals(id)&&(data[0]&255)==0xFD&&data.length==14){
-                // FD realtime layout: sport type, HR, calories16, pace, steps24...
-                int bpm=data[2]&255;
-                int kcal=((data[3]&255)<<8)|(data[4]&255);
+                // FD workout metrics are accepted only when the packet carries valid ranges.
+                Qx11DataEngine.Candidate[] decoded=Qx11DataEngine.gloryFitWorkout(data);
                 int workoutSteps=((data[7]&255)<<16)|((data[8]&255)<<8)|(data[9]&255);
-                runOnUiThread(()->{
-                    if(bpm>0&&bpm<260){heart.setText(String.valueOf(bpm));setMetricState(heartState,"LIVE WORKOUT HEART RATE");}
-                    if(kcal>0&&kcal<20000){calories.setText(String.valueOf(kcal));setMetricState(caloriesState,"WORKOUT CALORIES RECEIVED");}
-                    if(workoutSteps>0){steps.setText(String.valueOf(workoutSteps));setMetricState(stepsState,"LIVE WORKOUT STEP COUNT");}
-                });
+                for(Qx11DataEngine.Candidate candidate:decoded){
+                    if("heart".equals(candidate.metric))publishHeart(candidate.value,candidate.engine);
+                    if("calories".equals(candidate.metric)){
+                        WatchDataStore.put(this,"calories",candidate.value,candidate.engine);
+                        runOnUiThread(()->{calories.setText(String.valueOf(candidate.value));setMetricState(caloriesState,"WORKOUT CALORIES RECEIVED");});
+                    }
+                }
+                if(workoutSteps>0){
+                    WatchDataStore.put(this,"steps",workoutSteps,"QX11 FD live workout");
+                    runOnUiThread(()->{steps.setText(String.valueOf(workoutSteps));setMetricState(stepsState,"LIVE WORKOUT STEP COUNT");});
+                }
             }
             if(GF_HR_NOTIFY.equals(id)&&(data[0]&255)==0x34){
                 int spo2=GloryFitDecoder.decodeSpO2(data);
@@ -599,6 +604,7 @@ public class WatchActivity extends Activity {
             if(entry.getKey().startsWith(today+"-"))dailyTotal+=entry.getValue();
         final int displayTotal=dailyTotal;
         final int hours=countTodayHours(today);
+        WatchDataStore.put(this,"steps",displayTotal,"QX11 B1/B2 daily sum");
         runOnUiThread(()->{
             steps.setText(String.format(Locale.US,"%d",displayTotal));
             setMetricState(stepsState,"TODAY • "+hours+" HOURLY RECORD(S) • LATEST VALUE PER HOUR");
