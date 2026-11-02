@@ -218,7 +218,7 @@ public class WatchActivity extends Activity {
 
     private void connect(BluetoothDevice device){
         stopScan("Connecting to "+(QXII_MAC.equalsIgnoreCase(safeAddress(device))?"your QXII watch":"selected device")+"…");
-        if(gatt!=null){try{gatt.disconnect();gatt.close();}catch(Exception ignored){}gatt=null;}
+        if(gatt!=null){Qx11KeepAliveService.release(this,gatt);try{gatt.disconnect();gatt.close();}catch(Exception ignored){}gatt=null;}
         connected=false;gattOperations.clear();gattOperationInFlight=false;enabledCharacteristics.clear();resetMeasurements();
         try{
             watchName.setText(QXII_MAC.equalsIgnoreCase(safeAddress(device))
@@ -232,10 +232,10 @@ public class WatchActivity extends Activity {
     private final BluetoothGattCallback gattCallback=new BluetoothGattCallback(){
         @Override public void onConnectionStateChange(BluetoothGatt source,int statusCode,int newState){
             if(newState==BluetoothProfile.STATE_CONNECTED){
-                gatt=source;connected=true;WatchDataStore.setConnected(WatchActivity.this,true);runOnUiThread(()->setStatus("Connected. Reading available watch measurements…"));
+                gatt=source;connected=true;WatchDataStore.setConnected(WatchActivity.this,true);Qx11KeepAliveService.retain(WatchActivity.this,source);runOnUiThread(()->setStatus("Connected. Keeping the QX11 session active while you use Q-BOIX…"));
                 try{source.discoverServices();}catch(SecurityException e){runOnUiThread(()->setStatus("Connected, but service discovery permission failed."));}
             }else if(newState==BluetoothProfile.STATE_DISCONNECTED){
-                connected=false;WatchDataStore.setConnected(WatchActivity.this,false);runOnUiThread(()->{setStatus("Watch disconnected.");resetMeasurements();});
+                connected=false;WatchDataStore.setConnected(WatchActivity.this,false);Qx11KeepAliveService.release(WatchActivity.this,source);runOnUiThread(()->{setStatus("Watch disconnected.");resetMeasurements();});
                 try{source.close();}catch(Exception ignored){}
             }
         }
