@@ -224,7 +224,7 @@ public class WatchActivity extends Activity {
             watchName.setText(QXII_MAC.equalsIgnoreCase(safeAddress(device))
                 ?"QX11_AE96 • HELLO_WATCH • V006927"
                 :"SELECTED BLUETOOTH WATCH");
-            WatchDataStore.setConnected(this,false);\n            WatchDataStore.setConnected(this,false);
+            WatchDataStore.setConnected(this,false);
             gatt=device.connectGatt(this,false,gattCallback);
         }catch(SecurityException e){setStatus("Android denied Bluetooth connection permission.");}
     }
@@ -496,7 +496,7 @@ public class WatchActivity extends Activity {
         recordRawPacket(c,data);
         if(data==null||data.length==0)return;
         UUID id=c.getUuid();
-        if(HR_MEASURE.equals(id)){\n            Qx11DataEngine.Candidate candidate=Qx11DataEngine.standardHeartRate(data);\n            if(candidate!=null)publishHeart(candidate.value,candidate.engine);\n        }
+        if(HR_MEASURE.equals(id)) {\n            Qx11DataEngine.Candidate candidate=Qx11DataEngine.standardHeartRate(data);\n            if(candidate!=null) publishHeart(candidate.value,candidate.engine);\n        }
         else if(BATTERY_LEVEL.equals(id)){
             int level=data[0]&255;
             if(level<=100){
