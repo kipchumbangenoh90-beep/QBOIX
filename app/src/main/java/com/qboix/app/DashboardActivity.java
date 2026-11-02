@@ -61,6 +61,12 @@ public class DashboardActivity extends Activity {
     }
 
     @Override
+    protected void onResume() {
+        super.onResume();
+        if (mainLayout != null && "Home".equals(currentPage)) showPage("Home");
+    }
+
+    @Override
     public void onBackPressed() {
         if (!"Home".equals(currentPage)) {
             showPage("Home");
