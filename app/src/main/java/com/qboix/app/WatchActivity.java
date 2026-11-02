@@ -548,26 +548,18 @@ public class WatchActivity extends Activity {
         }
     }
     private boolean parseGloryFitSteps(byte[] data){
-        // B1 live/history step records may include trailing fields after the
-        // observed date and 16-bit hourly count. B2 history records are 18 bytes.
-        // Captured layout: opcode, year-high, year-low, DAY, MONTH, HOUR,
-        // total-high, total-low. Do not display one hourly record as daily steps.
-        if(data.length<8)return false;
-        int opcode=data[0]&255;
-        if(opcode==0xB2&&data.length!=18)return false;
-        if(opcode!=0xB1&&opcode!=0xB2)return false;
-        int year=((data[1]&255)<<8)|(data[2]&255);
-        int day=data[3]&255, month=data[4]&255, hour=data[5]&255;
-        int hourlyTotal=((data[6]&255)<<8)|(data[7]&255);
-        if(year<2020||year>2100||month<1||month>12||day<1||day>31||hour>23)return false;
-        Calendar recordTime=Calendar.getInstance();
-        recordTime.clear();
-        recordTime.setLenient(false);
-        recordTime.set(year,month-1,day,hour,0,0);
-        try{recordTime.getTimeInMillis();}catch(IllegalArgumentException invalidDate){return false;}
-        String date=String.format(Locale.US,"%04d-%02d-%02d",year,month,day);
+        // QX11 capture confirms the 18-byte B1 record date order is
+        // YEAR (big-endian), MONTH, DAY, HOUR, followed by a 16-bit
+        // hourly step total (big-endian). Example: 07 EA 0B 02 0A = 2026-11-02 10:00.
+        GloryFitDecoder.StepRecord record=GloryFitDecoder.decodeStepRecord(data);
+        if(record==null)return false;
+        String date=record.date;
+        int hour=record.hour;
+        int hourlyTotal=record.steps;
         String today=new java.text.SimpleDateFormat("yyyy-MM-dd",Locale.US).format(new Date());
         String key=date+"-"+String.format(Locale.US,"%02d",hour);
+        // B1 is observed repeatedly as the same hour's counter increases.
+        // Replace that hour's previous value; never add each notification.
         hourlySteps.put(key,hourlyTotal);
         if(!date.equals(today)){
             final String recordLabel=date+" "+String.format(Locale.US,"%02d:00",hour);
@@ -582,7 +574,7 @@ public class WatchActivity extends Activity {
         final int hours=countTodayHours(today);
         runOnUiThread(()->{
             steps.setText(String.format(Locale.US,"%d",displayTotal));
-            setMetricState(stepsState,"TODAY • SUM OF "+hours+" HOURLY RECORDS");
+            setMetricState(stepsState,"TODAY • "+hours+" HOURLY RECORD(S) • LATEST VALUE PER HOUR");
         });
         return true;
     }
