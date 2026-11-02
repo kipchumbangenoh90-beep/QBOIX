@@ -612,7 +612,7 @@ public class WatchActivity extends Activity {
         int bpm=(flags&1)==0?(data[1]&255):((data[2]&255)<<8)|(data[1]&255);
         if(bpm>0&&bpm<260)publishHeart(bpm,"BLE 2A37");
     }
-    private void publishHeart(int bpm,String source){\n        WatchDataStore.put(this,"heart",bpm,source);\n        runOnUiThread(()->{heart.setText(String.valueOf(bpm));setMetricState(heartState,"LIVE • "+source);});\n    }\n    private void publishHeart(int bpm,String source){
+    private void publishHeart(int bpm,String source){
         WatchDataStore.put(this,"heart",bpm,source);
         runOnUiThread(()->{heart.setText(String.valueOf(bpm));setMetricState(heartState,"LIVE • "+source);});
     }
