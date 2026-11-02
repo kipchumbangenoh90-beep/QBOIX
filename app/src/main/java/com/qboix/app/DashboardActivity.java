@@ -8,6 +8,8 @@ import android.graphics.drawable.GradientDrawable;
 import android.widget.FrameLayout;
 import android.widget.ImageView;
 import android.os.Bundle;
+import android.os.Handler;
+import android.os.Looper;
 import android.view.Gravity;
 import android.view.View;
 import android.widget.LinearLayout;
@@ -33,6 +35,9 @@ public class DashboardActivity extends Activity {
     private LinearLayout mainLayout;
     private LinearLayout navigation;
     private String currentPage = "Home";
+    private final Handler watchRefreshHandler = new Handler(Looper.getMainLooper());
+    private final Runnable watchRefresh = new Runnable(){ @Override public void run(){ refreshWatchMetrics(); watchRefreshHandler.postDelayed(this,1000); } };
+    private TextView watchHeartValue, watchOxygenValue, watchStepsValue, watchCaloriesValue, watchConnectionLabel;
 
     private final String[] tabs = {
             "Home", "Activity", "Training", "Maps", "You"
@@ -61,6 +66,7 @@ public class DashboardActivity extends Activity {
     protected void onResume() {
         super.onResume();
         if (mainLayout != null && "Home".equals(currentPage)) showPage("Home");
+        watchRefreshHandler.removeCallbacks(watchRefresh); watchRefreshHandler.post(watchRefresh);
     }
 
     @Override
@@ -318,7 +324,7 @@ public class DashboardActivity extends Activity {
         row.addView(cell, new LinearLayout.LayoutParams(0, -2, 1));
     }
 
-    private void startGpsActivity(String activityType) {
+    private void refreshWatchMetrics(){\n        if(watchHeartValue==null)return;\n        int heart=WatchDataStore.get(this,"heart"), oxygen=WatchDataStore.get(this,"spo2"), steps=WatchDataStore.get(this,"steps"), calories=WatchDataStore.get(this,"calories");\n        watchHeartValue.setText(heart<0?"—":String.valueOf(heart));\n        watchOxygenValue.setText(oxygen<0?"—":String.valueOf(oxygen));\n        watchStepsValue.setText(steps<0?"—":String.valueOf(steps));\n        watchCaloriesValue.setText(calories<0?"—":String.valueOf(calories));\n        if(watchConnectionLabel!=null)watchConnectionLabel.setText(WatchDataStore.isConnected(this)?"QX11 CONNECTED  •  LIVE WATCH":"QX11 DISCONNECTED  •  LAST READINGS");\n    }\n\n    private void startGpsActivity(String activityType) {
         Intent intent = new Intent(DashboardActivity.this, GpsRunActivity.class);
         intent.putExtra("activity_type", activityType);
         startActivity(intent);
