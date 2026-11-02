@@ -224,7 +224,8 @@ public class WatchActivity extends Activity {
             watchName.setText(QXII_MAC.equalsIgnoreCase(safeAddress(device))
                 ?"QX11_AE96 • HELLO_WATCH • V006927"
                 :"SELECTED BLUETOOTH WATCH");
-            WatchDataStore.setConnected(this,false);\n            gatt=device.connectGatt(this,false,gattCallback);
+            WatchDataStore.setConnected(this,false);\n            WatchDataStore.setConnected(this,false);
+            gatt=device.connectGatt(this,false,gattCallback);
         }catch(SecurityException e){setStatus("Android denied Bluetooth connection permission.");}
     }
 
@@ -510,12 +511,7 @@ public class WatchActivity extends Activity {
             String channel=GF_HR_NOTIFY.equals(id)?"55FF / 33F2":"56FF / 34F2";
             String receivedAt=new java.text.SimpleDateFormat("HH:mm:ss",Locale.US).format(new Date());
             String packet=channel+" • PACKET "+customPackets+" • "+receivedAt+" • "+hex(data);
-            // Restore the earlier QX11 battery response path. Only accept a valid A2 percentage.
-            if(GF_HR_NOTIFY.equals(id)&&data.length>=2&&(data[0]&255)==0xA2){
-                int level=data[1]&255;
-                if(level<=100)runOnUiThread(()->battery.setText("BATTERY  •  "+level+"%  •  WATCH RESPONSE (A2)"));
-                else runOnUiThread(()->battery.setText("BATTERY  •  INVALID WATCH VALUE "+level+" • NOT TRUSTED"));
-            }
+            // A2 was constant 0x47 in repeated QX11 captures; it is not trusted as battery.
             if(GF_HR_NOTIFY.equals(id)&&data.length>=3&&(data[0]&255)==0xA1){
                 String info=new String(data,1,data.length-1,java.nio.charset.StandardCharsets.US_ASCII).replace("\u0000","").trim();
                 java.util.regex.Matcher firmware=java.util.regex.Pattern.compile("V[0-9]{4,}").matcher(info);
@@ -523,8 +519,8 @@ public class WatchActivity extends Activity {
                 runOnUiThread(()->watchName.setText("QX11_AE96 • HELLO_WATCH • "+version));
             }
             if(GF_HR_NOTIFY.equals(id)&&data.length>=4&&(data[0]&255)==0xE5&&(data[1]&255)==0x11){
-                int bpm=data[3]&255;
-                if(bpm>0&&bpm<260)runOnUiThread(()->{heart.setText(String.valueOf(bpm));setMetricState(heartState,"LIVE DATA RECEIVED • GLORYFIT");});
+                Qx11DataEngine.Candidate x=Qx11DataEngine.gloryFitE5(data);
+                if(x!=null)publishHeart(x.value,x.engine);
             }
             boolean stepsDecoded=false;
             if(GF_HR_NOTIFY.equals(id)&&data.length>0&&
@@ -544,6 +540,7 @@ public class WatchActivity extends Activity {
             if(GF_HR_NOTIFY.equals(id)&&(data[0]&255)==0x34){
                 int spo2=GloryFitDecoder.decodeSpO2(data);
                 if(spo2>=70&&spo2<=100){
+                    WatchDataStore.put(this,"spo2",spo2,"QX11 34 spot result");
                     spo2SpotPending=false;spo2EarlyFailureSeen=false;
                     runOnUiThread(()->{oxygen.setText(spo2+"%");setMetricState(oxygenState,"SPOT MEASUREMENT RECEIVED • GLORYFIT");});
                 } else if(data.length>=4&&(data[3]&255)==0xFF){
@@ -615,7 +612,11 @@ public class WatchActivity extends Activity {
         int bpm=(flags&1)==0?(data[1]&255):((data[2]&255)<<8)|(data[1]&255);
         if(bpm>0&&bpm<260)publishHeart(bpm,"BLE 2A37");
     }
-    private void publishHeart(int bpm,String source){\n        WatchDataStore.put(this,"heart",bpm,source);\n        runOnUiThread(()->{heart.setText(String.valueOf(bpm));setMetricState(heartState,"LIVE • "+source);});\n    }\n    private double decodeSfloat(int raw){
+    private void publishHeart(int bpm,String source){\n        WatchDataStore.put(this,"heart",bpm,source);\n        runOnUiThread(()->{heart.setText(String.valueOf(bpm));setMetricState(heartState,"LIVE • "+source);});\n    }\n    private void publishHeart(int bpm,String source){
+        WatchDataStore.put(this,"heart",bpm,source);
+        runOnUiThread(()->{heart.setText(String.valueOf(bpm));setMetricState(heartState,"LIVE • "+source);});
+    }
+    private double decodeSfloat(int raw){
         int mantissa=raw&0x0FFF;if((mantissa&0x0800)!=0)mantissa|=0xFFFFF000;
         int exponent=(raw>>12)&0x0F;if((exponent&0x08)!=0)exponent|=0xFFFFFFF0;
         if(mantissa==0x07FE||mantissa==0x07FF||mantissa==0x0800||mantissa==0x0801)return -1;
