@@ -227,6 +227,8 @@ public class DashboardActivity extends Activity {
         top.addView(settings);
         mainLayout.addView(top);
         addSpace(12);
+        // Show live QX11 metrics immediately below the brand header.
+        addConnectedWatchBar();
 
         // Cinematic welcome hero with layered night-to-sunset gradient
         LinearLayout hero = new LinearLayout(this);
