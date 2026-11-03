@@ -13,6 +13,7 @@ import android.view.View;
 import android.widget.LinearLayout;
 import android.widget.ScrollView;
 import android.widget.TextView;
+import android.widget.Toast;
 import android.widget.VideoView;
 import android.media.MediaPlayer;
 import android.net.Uri;
@@ -755,7 +756,7 @@ public class DashboardActivity extends Activity {
     }
 
     private void checkForAppUpdates() {
-        showMessage("Checking the latest Q-BOIX release on GitHub...");
+        Toast.makeText(this, "Checking GitHub for Q-BOIX updates...", Toast.LENGTH_SHORT).show();
         AppUpdateManager.checkForUpdate(this, new AppUpdateManager.CheckCallback() {
             @Override
             public void onUpToDate(String installedVersion) {
@@ -771,7 +772,7 @@ public class DashboardActivity extends Activity {
                                 + "\n\nYour existing workouts, routes, login and settings will be kept.")
                         .setNegativeButton("Later", null)
                         .setPositiveButton("Download update", (dialog, which) -> {
-                            showMessage("Downloading and verifying Q-BOIX " + update.versionName + "...");
+                            Toast.makeText(DashboardActivity.this, "Downloading and verifying Q-BOIX " + update.versionName + "...", Toast.LENGTH_LONG).show();
                             AppUpdateManager.downloadUpdate(DashboardActivity.this, update,
                                     new AppUpdateManager.DownloadCallback() {
                                         @Override
