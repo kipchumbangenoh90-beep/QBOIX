@@ -446,6 +446,7 @@ public class WatchActivity extends Activity {
                 BluetoothGatt source, int statusCode, int newState) {
             if (newState == BluetoothProfile.STATE_CONNECTED) {
                 gatt = source;
+                WatchDataStore.setConnected(WatchActivity.this, false);
                 runOnUiThread(() -> setStatus(
                         "Bluetooth link connected. Discovering services; no health data confirmed yet."));
                 try {
@@ -455,6 +456,7 @@ public class WatchActivity extends Activity {
                             setStatus("Connected, but service discovery permission failed."));
                 }
             } else if (newState == BluetoothProfile.STATE_DISCONNECTED) {
+                WatchDataStore.setConnected(WatchActivity.this, false);
                 runOnUiThread(() -> {
                     setStatus("Watch disconnected.");
                     resetMeasurements();
@@ -741,6 +743,8 @@ public class WatchActivity extends Activity {
         if (bpm > 0 && bpm < 260) {
             runOnUiThread(() -> {
                 heart.setText(String.valueOf(bpm));
+                WatchDataStore.saveMeasurement(WatchActivity.this, "heart", bpm);
+                WatchDataStore.setConnected(WatchActivity.this, true);
                 setStatus("LIVE HEART RATE RECEIVED • " + time);
             });
         }
@@ -756,6 +760,8 @@ public class WatchActivity extends Activity {
         if ((flags & 0x01) == 0 && spo2 >= 0 && spo2 <= 100) {
             runOnUiThread(() -> {
                 oxygen.setText(String.format(Locale.US, "%.0f%%", spo2));
+                WatchDataStore.saveMeasurement(WatchActivity.this, "spo2", (int) Math.round(spo2));
+                WatchDataStore.setConnected(WatchActivity.this, true);
                 setStatus("LIVE BLOOD OXYGEN VALUE RECEIVED • " + time);
             });
         } else {
