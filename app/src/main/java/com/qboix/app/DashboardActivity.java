@@ -86,6 +86,10 @@ public class DashboardActivity extends Activity {
         wallpaper.setScaleType(ImageView.ScaleType.CENTER_CROP);
         frame.addView(wallpaper, new FrameLayout.LayoutParams(-1, -1));
 
+        View darkWash = new View(this);
+        darkWash.setBackgroundColor(Color.argb(105, 0, 0, 0));
+        frame.addView(darkWash, new FrameLayout.LayoutParams(-1, -1));
+
         LinearLayout root = new LinearLayout(this);
         root.setOrientation(LinearLayout.VERTICAL);
         root.setBackgroundColor(Color.TRANSPARENT);
@@ -399,10 +403,15 @@ public class DashboardActivity extends Activity {
     }
 
     private void showMaps() {
-        pageHeading("MAPS");
-        addText("Explore your routes and running locations.", GREY, 14, false);
-        addActionCard("GPS ROUTES", "View routes recorded during your runs", GOLD,
+        pageHeading("MAPS & ROUTES");
+        addText("Explore your recorded routes and start a new GPS route.", GREY, 14, false);
+        addSpace(10);
+        addActionCard("RECORDED GPS ROUTES", "Open your route history, pace charts and activity map.", BLUE,
                 () -> startActivity(new Intent(DashboardActivity.this, PerformanceAnalyticsActivity.class)));
+        addActionCard("START LIVE ROUTE", "Record a new run and watch your route appear as you move.", GREEN,
+                () -> startActivity(new Intent(DashboardActivity.this, GpsRunActivity.class)));
+        addActionCard("WORKOUT HISTORY", "Review saved runs and previous routes.", GOLD,
+                () -> startActivity(new Intent(DashboardActivity.this, WorkoutHistoryActivity.class)));
     }
 
     // ACTIVITIES
