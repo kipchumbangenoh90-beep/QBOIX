@@ -279,7 +279,7 @@ public class FartlekActivity extends Activity {
 
     private void startGpsTracking() {
         if(checkSelfPermission(Manifest.permission.ACCESS_FINE_LOCATION)!=PackageManager.PERMISSION_GRANTED) {
-            requestPermissions(new String[]{Manifest.permission.ACCESS_FINE_LOCATION,Manifest.permission.ACCESS_COARSE_LOCATION},72);
+            requestPermissions(new String[]{Manifest.permission.ACCESS_FINE_LOCATION},72);
             return;
         }
         Intent i=new Intent(this,GpsTrackingService.class);
@@ -298,9 +298,13 @@ public class FartlekActivity extends Activity {
     @Override public void onRequestPermissionsResult(int requestCode,String[] permissions,int[] results) {
         super.onRequestPermissionsResult(requestCode,permissions,results);
         if(requestCode==72) {
-            boolean granted=false;for(int result:results)if(result==PackageManager.PERMISSION_GRANTED)granted=true;
-            if(granted)startGpsTracking();
-            else Toast.makeText(this,"GPS permission denied. Fartlek timer will continue without route tracking.",Toast.LENGTH_LONG).show();
+            boolean preciseGranted = checkSelfPermission(Manifest.permission.ACCESS_FINE_LOCATION)
+                    == PackageManager.PERMISSION_GRANTED;
+            if(preciseGranted) {
+                startGpsTracking();
+            } else {
+                Toast.makeText(this,"Precise GPS permission denied. Fartlek timer will continue without route tracking.",Toast.LENGTH_LONG).show();
+            }
         }
     }
 
