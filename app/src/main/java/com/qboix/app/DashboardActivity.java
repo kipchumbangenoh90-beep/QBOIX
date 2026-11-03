@@ -1054,6 +1054,18 @@ public class DashboardActivity extends Activity {
         indicator.setBackground(circle);
     }
 
+    private void showNotificationSettings() {
+        android.content.SharedPreferences prefs = getSharedPreferences("qboix_preferences", MODE_PRIVATE);
+        boolean enabled = prefs.getBoolean("training_notifications", true);
+        showStyledDialog("TRAINING NOTIFICATIONS",
+                "Training reminders are currently " + (enabled ? "ON" : "OFF") +
+                ". Android may also control notifications in system settings.",
+                enabled ? "TURN OFF" : "TURN ON", () -> {
+                    prefs.edit().putBoolean("training_notifications", !enabled).apply();
+                    Toast.makeText(this, "Notification preference saved", Toast.LENGTH_SHORT).show();
+                }, "CLOSE", null);
+    }
+
     private void showGpsSettings() {
         boolean fine = android.os.Build.VERSION.SDK_INT < 23 ||
                 checkSelfPermission(android.Manifest.permission.ACCESS_FINE_LOCATION) ==
