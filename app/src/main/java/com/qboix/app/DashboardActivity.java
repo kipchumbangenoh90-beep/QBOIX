@@ -346,6 +346,7 @@ public class DashboardActivity extends Activity {
         watchOxygenValue.setText(oxygen < 0 ? "—" : String.valueOf(oxygen));
         watchStepsValue.setText(steps < 0 ? "—" : String.valueOf(steps));
         watchCaloriesValue.setText(calories < 0 ? "—" : String.valueOf(calories));
+        // Connection status is set only after WatchActivity receives a real measurement.
         boolean watchConnected = WatchDataStore.isConnected(this);
         if (watchConnectionLabel != null) {
             watchConnectionLabel.setText(watchConnected
