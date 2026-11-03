@@ -5,6 +5,7 @@ import android.content.Context;
 import android.content.Intent;
 import android.content.pm.PackageInfo;
 import android.content.pm.PackageManager;
+import android.content.pm.Signature;
 import android.net.Uri;
 import android.os.Build;
 import android.os.Environment;
@@ -132,6 +133,7 @@ public final class AppUpdateManager {
                     output.delete();
                     throw new SecurityException("APK verification failed. The download was not installed.");
                 }
+                validatePackageAndSigningCertificate(app, output, update.versionCode);
                 File verified = output;
                 MAIN.post(() -> callback.onDownloaded(verified));
             } catch (Exception e) {
@@ -155,6 +157,52 @@ public final class AppUpdateManager {
         install.setDataAndType(uri, "application/vnd.android.package-archive");
         install.addFlags(Intent.FLAG_GRANT_READ_URI_PERMISSION | Intent.FLAG_ACTIVITY_NEW_TASK);
         activity.startActivity(install);
+    }
+
+    private static void validatePackageAndSigningCertificate(Context context, File apk, int expectedVersionCode) throws Exception {
+        PackageManager pm = context.getPackageManager();
+        PackageInfo archive;
+        PackageInfo installed;
+        if (Build.VERSION.SDK_INT >= 28) {
+            archive = pm.getPackageArchiveInfo(apk.getAbsolutePath(), PackageManager.GET_SIGNING_CERTIFICATES);
+            installed = pm.getPackageInfo(context.getPackageName(), PackageManager.GET_SIGNING_CERTIFICATES);
+            if (archive == null || archive.signingInfo == null || installed.signingInfo == null) {
+                throw new SecurityException("The APK signing information could not be verified.");
+            }
+            if (!sameSigners(installed.signingInfo.getApkContentsSigners(), archive.signingInfo.getApkContentsSigners())) {
+                throw new SecurityException("This update was signed with a different key. It cannot update this installation.");
+            }
+            if ((int) archive.getLongVersionCode() != expectedVersionCode) {
+                throw new SecurityException("The APK version does not match the release metadata.");
+            }
+        } else {
+            //noinspection deprecation
+            archive = pm.getPackageArchiveInfo(apk.getAbsolutePath(), PackageManager.GET_SIGNATURES);
+            //noinspection deprecation
+            installed = pm.getPackageInfo(context.getPackageName(), PackageManager.GET_SIGNATURES);
+            if (archive == null || !sameSigners(installed.signatures, archive.signatures)) {
+                throw new SecurityException("This update was signed with a different key.");
+            }
+            //noinspection deprecation
+            if (archive.versionCode != expectedVersionCode) {
+                throw new SecurityException("The APK version does not match the release metadata.");
+            }
+        }
+        if (!context.getPackageName().equals(archive.packageName)) {
+            throw new SecurityException("This APK is not a Q-BOIX package.");
+        }
+    }
+
+    private static boolean sameSigners(Signature[] installed, Signature[] update) {
+        if (installed == null || update == null || installed.length == 0 || installed.length != update.length) return false;
+        for (Signature current : installed) {
+            boolean found = false;
+            for (Signature candidate : update) {
+                if (current.equals(candidate)) { found = true; break; }
+            }
+            if (!found) return false;
+        }
+        return true;
     }
 
     private static int getInstalledVersionCode(Context context) throws Exception {
