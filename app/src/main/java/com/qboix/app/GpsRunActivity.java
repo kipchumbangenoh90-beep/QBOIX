@@ -87,42 +87,37 @@ public class GpsRunActivity extends Activity {
 
     private void prepareAutomaticLocation() {
         previewLocationManager = (LocationManager)getSystemService(LOCATION_SERVICE);
-        if (checkSelfPermission(Manifest.permission.ACCESS_FINE_LOCATION) != PackageManager.PERMISSION_GRANTED
-                && checkSelfPermission(Manifest.permission.ACCESS_COARSE_LOCATION) != PackageManager.PERMISSION_GRANTED) {
-            status.setText("Allow location access to find your position");
-            requestPermissions(new String[]{Manifest.permission.ACCESS_FINE_LOCATION, Manifest.permission.ACCESS_COARSE_LOCATION}, 40);
+        if (checkSelfPermission(Manifest.permission.ACCESS_FINE_LOCATION) != PackageManager.PERMISSION_GRANTED) {
+            status.setText("Allow precise location so Q-BOIX can use the phone's built-in GPS");
+            requestPermissions(new String[]{Manifest.permission.ACCESS_FINE_LOCATION}, 40);
             return;
         }
         startPreviewLocationUpdates();
     }
 
+    // Offline positioning: use the phone's GNSS/GPS provider only.
     private void startPreviewLocationUpdates() {
         if (previewLocationManager == null || previewUpdatesRequested) return;
-        boolean gpsEnabled = previewLocationManager.isProviderEnabled(LocationManager.GPS_PROVIDER);
-        boolean networkEnabled = previewLocationManager.isProviderEnabled(LocationManager.NETWORK_PROVIDER);
-        if (!gpsEnabled && !networkEnabled) {
+        if (checkSelfPermission(Manifest.permission.ACCESS_FINE_LOCATION) != PackageManager.PERMISSION_GRANTED) {
+            status.setText("Precise location permission is required for GPS");
+            return;
+        }
+        if (!previewLocationManager.isProviderEnabled(LocationManager.GPS_PROVIDER)) {
             status.setText("Turn on Location / GPS on your phone");
             return;
         }
         try {
-            Location last = null;
-            if (checkSelfPermission(Manifest.permission.ACCESS_FINE_LOCATION) == PackageManager.PERMISSION_GRANTED) {
-                last = previewLocationManager.getLastKnownLocation(LocationManager.GPS_PROVIDER);
-            }
-            if (last == null && checkSelfPermission(Manifest.permission.ACCESS_COARSE_LOCATION) == PackageManager.PERMISSION_GRANTED) {
-                last = previewLocationManager.getLastKnownLocation(LocationManager.NETWORK_PROVIDER);
-            }
+            Location last = previewLocationManager.getLastKnownLocation(LocationManager.GPS_PROVIDER);
             if (last != null) previewLocationListener.onLocationChanged(last);
-
-            if (gpsEnabled && checkSelfPermission(Manifest.permission.ACCESS_FINE_LOCATION) == PackageManager.PERMISSION_GRANTED) {
-                previewLocationManager.requestLocationUpdates(LocationManager.GPS_PROVIDER, 1000, 0, previewLocationListener, Looper.getMainLooper());
-            } else if (networkEnabled && checkSelfPermission(Manifest.permission.ACCESS_COARSE_LOCATION) == PackageManager.PERMISSION_GRANTED) {
-                previewLocationManager.requestLocationUpdates(LocationManager.NETWORK_PROVIDER, 3000, 0, previewLocationListener, Looper.getMainLooper());
-            }
+            previewLocationManager.requestLocationUpdates(
+                    LocationManager.GPS_PROVIDER, 1000, 0,
+                    previewLocationListener, Looper.getMainLooper());
             previewUpdatesRequested = true;
-            if (status != null && currentPhoneLocation == null) status.setText("Finding your phone location…");
+            if (status != null && currentPhoneLocation == null) {
+                status.setText("Finding satellites • GPS only • no internet required");
+            }
         } catch (SecurityException e) {
-            status.setText("Location permission is needed to find your position");
+            status.setText("Precise location permission is needed for GPS");
         }
     }
     private void buildScreen(){
@@ -159,9 +154,9 @@ public class GpsRunActivity extends Activity {
             }
         });
         mapFrame.addView(mapWeb,new FrameLayout.LayoutParams(-1,-1));
-        mapWeb.setVisibility(View.INVISIBLE);
+        // Keep the on-device route canvas visible; never load remote map scripts or tiles.
+        mapWeb.setVisibility(View.GONE);
         fallback.setVisibility(View.VISIBLE);
-        mapWeb.loadDataWithBaseURL("https://qboix.local/",mapHtml(),"text/html","UTF-8",null);
         root.addView(mapFrame,new FrameLayout.LayoutParams(-1,-1));
 
         LinearLayout header=new LinearLayout(this);
@@ -359,7 +354,7 @@ public class GpsRunActivity extends Activity {
         if(dialog.getWindow()!=null)dialog.getWindow().setLayout((int)(getResources().getDisplayMetrics().widthPixels*.88),-2);
     }
     private void toggleSettings(View drawer,View dim){settingsOpen=!settingsOpen;drawer.setVisibility(settingsOpen?View.VISIBLE:View.GONE);dim.setVisibility(settingsOpen?View.VISIBLE:View.GONE);drawer.bringToFront();dim.bringToFront();if(settingsOpen)drawer.bringToFront();}
-    private String mapHtml(){return "<!doctype html><html><head><meta name='viewport' content='width=device-width,initial-scale=1,maximum-scale=1'><link rel='stylesheet' href='https://unpkg.com/leaflet@1.9.4/dist/leaflet.css'/><style>html,body,#map{height:100%;margin:0;background:#fff}</style></head><body><div id='map'></div><script src='https://unpkg.com/leaflet@1.9.4/dist/leaflet.js'></script><script>var map=L.map('map').setView([0,0],16);L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png',{maxZoom:19,attribution:'© OpenStreetMap'}).addTo(map);var line=L.polyline([],{color:'#3488ff',weight:5}).addTo(map);var marker=null,userMarker=null;function setUserLocation(lat,lon){var p=[lat,lon];if(userMarker)userMarker.setLatLng(p);else userMarker=L.circleMarker(p,{radius:9,color:'#fff',weight:3,fillColor:'#16a66a',fillOpacity:1}).addTo(map);map.setView(p,17);}function setRoute(a){var pts=a.map(p=>[p.lat,p.lon]);line.setLatLngs(pts);if(pts.length){if(marker)marker.setLatLng(pts[pts.length-1]);else marker=L.circleMarker(pts[pts.length-1],{radius:7,color:'#fff',weight:3,fillColor:'#3488ff',fillOpacity:1}).addTo(map);map.panTo(pts[pts.length-1]);}}</script></body></html>";}
+    private String mapHtml(){return "";}
     private void updateRoute(String json){try{JSONArray a=new JSONArray(json);fallback.setRoute(a);if(mapWeb.getVisibility()==View.VISIBLE)mapWeb.evaluateJavascript("setRoute("+json+")",null);}catch(Exception ignored){}}
     private String activityHeading(){
         if("MARATHON".equals(activityType))return "MARATHON TRAINING";
@@ -372,8 +367,11 @@ public class GpsRunActivity extends Activity {
         boolean granted=false;
         for(int result:g) if(result==PackageManager.PERMISSION_GRANTED) granted=true;
         if(r==40){
-            if(granted) startPreviewLocationUpdates();
-            else status.setText("Location permission denied • GPS unavailable");
+            if(checkSelfPermission(Manifest.permission.ACCESS_FINE_LOCATION)==PackageManager.PERMISSION_GRANTED) {
+                startPreviewLocationUpdates();
+            } else {
+                status.setText("Precise location permission denied • GPS unavailable");
+            }
         } else if(r==41){
             if(granted) command(GpsTrackingService.START,selectedInterval());
             else status.setText("Location permission is required to record.");
@@ -394,8 +392,8 @@ public class GpsRunActivity extends Activity {
     }
     @Override protected void onResume(){
         super.onResume();
-        if(previewLocationManager!=null && checkSelfPermission(Manifest.permission.ACCESS_FINE_LOCATION)==PackageManager.PERMISSION_GRANTED
-                || previewLocationManager!=null && checkSelfPermission(Manifest.permission.ACCESS_COARSE_LOCATION)==PackageManager.PERMISSION_GRANTED){
+        if(previewLocationManager!=null
+                && checkSelfPermission(Manifest.permission.ACCESS_FINE_LOCATION)==PackageManager.PERMISSION_GRANTED){
             startPreviewLocationUpdates();
         }
     }
