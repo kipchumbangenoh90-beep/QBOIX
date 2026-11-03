@@ -2,6 +2,13 @@ plugins {
     id 'com.android.application'
 }
 
+def qboixKeystorePath = System.getenv('QBOIX_KEYSTORE_PATH')
+def qboixStorePassword = System.getenv('QBOIX_STORE_PASSWORD')
+def qboixKeyAlias = System.getenv('QBOIX_KEY_ALIAS')
+def qboixKeyPassword = System.getenv('QBOIX_KEY_PASSWORD')
+def qboixHasReleaseSigning = [qboixKeystorePath, qboixStorePassword, qboixKeyAlias, qboixKeyPassword]
+        .every { it != null && !it.trim().isEmpty() }
+
 android {
     namespace 'com.qboix.app'
     compileSdk 34
@@ -10,25 +17,26 @@ android {
         applicationId 'com.qboix.app'
         minSdk 26
         targetSdk 34
-        versionCode (project.findProperty('qboixVersionCode') ?: '1').toInteger()
+        versionCode (project.findProperty('qboixVersionCode') ?: '1').toString().toInteger()
         versionName (project.findProperty('qboixVersionName') ?: '0.1').toString()
     }
 
     signingConfigs {
-        release {
-            def keyPath = System.getenv('QBOIX_KEYSTORE_PATH')
-            if (keyPath != null && !keyPath.trim().isEmpty()) {
-                storeFile file(keyPath)
-                storePassword System.getenv('QBOIX_STORE_PASSWORD')
-                keyAlias System.getenv('QBOIX_KEY_ALIAS')
-                keyPassword System.getenv('QBOIX_KEY_PASSWORD')
+        if (qboixHasReleaseSigning) {
+            release {
+                storeFile file(qboixKeystorePath)
+                storePassword qboixStorePassword
+                keyAlias qboixKeyAlias
+                keyPassword qboixKeyPassword
             }
         }
     }
 
     buildTypes {
         release {
-            signingConfig signingConfigs.release
+            if (qboixHasReleaseSigning) {
+                signingConfig signingConfigs.release
+            }
             minifyEnabled false
         }
     }
