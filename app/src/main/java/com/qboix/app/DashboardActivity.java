@@ -770,33 +770,85 @@ public class DashboardActivity extends Activity {
     // ACHIEVEMENTS
 
     private void showAchievements() {
-
         pageHeading("ACHIEVEMENTS");
+        addText("Milestones calculated from your saved Q-BOIX workouts.", GREY, 13, false);
+        addSpace(10);
 
-        addText(
-                "Every achievement starts with one step.",
-                GREY, 14, false
-        );
+        JSONArray runs = WorkoutStore.getRunSessions(this);
+        JSONArray fartlek = WorkoutStore.getFartlekSessions(this);
+        int runCount = runs.length();
+        double totalMetres = 0;
+        double longestRun = 0;
+        java.util.HashSet<String> activeDays = new java.util.HashSet<>();
+        int fastest3000 = Integer.MAX_VALUE;
+        for (int i = 0; i < runs.length(); i++) {
+            JSONObject item = runs.optJSONObject(i);
+            if (item == null) continue;
+            double distance = item.optDouble("distanceMeters", 0);
+            totalMetres += Math.max(0, distance);
+            longestRun = Math.max(longestRun, distance);
+            long date = item.optLong("startedAt", 0);
+            if (date > 0) activeDays.add(new SimpleDateFormat("yyyy-MM-dd", Locale.US).format(new Date(date)));
+            JSONArray samples = item.optJSONArray("distanceTimeSamples");
+            if (samples != null) {
+                JSONObject previous = null;
+                for (int j = 0; j < samples.length(); j++) {
+                    JSONObject sample = samples.optJSONObject(j);
+                    if (sample == null) continue;
+                    if (previous != null && previous.optDouble("distanceMeters", 0) <= 3000
+                            && sample.optDouble("distanceMeters", 0) >= 3000) {
+                        int seconds = sample.optInt("elapsedSeconds", Integer.MAX_VALUE);
+                        if (seconds > 0) fastest3000 = Math.min(fastest3000, seconds);
+                        break;
+                    }
+                    previous = sample;
+                }
+            }
+        }
+        boolean firstRun = runCount > 0;
+        boolean tenKm = totalMetres >= 10000;
+        boolean consistency = activeDays.size() >= 3;
+        boolean personalBest = fastest3000 != Integer.MAX_VALUE;
 
-        addSimpleCard(
-                "FIRST RUN",
-                "Record your first running activity."
-        );
+        addAchievementCard("FIRST RUN", "Record your first GPS running activity.",
+                firstRun, runCount > 0 ? runCount + " GPS run(s) recorded" : "Not unlocked yet");
+        addAchievementCard("10 KM MILESTONE", "Accumulate 10 kilometres across your GPS runs.",
+                tenKm, String.format(Locale.getDefault(), "%.2f km accumulated", totalMetres / 1000.0));
+        addAchievementCard("CONSISTENCY", "Train on at least three different days.",
+                consistency, activeDays.size() + " active training day(s) recorded");
+        addAchievementCard("PERSONAL BEST", "Record a GPS 3 km checkpoint time.",
+                personalBest, personalBest ? "3 km checkpoint: " + formatRecordTime(fastest3000)
+                        : "A recorded run reaching 3 km is needed");
 
-        addSimpleCard(
-                "10 KM MILESTONE",
-                "Complete 10 kilometres."
-        );
+        addSpace(10);
+        addText("TRAINING SUMMARY", GOLD, 13, true);
+        addSimpleCard("GPS DISTANCE", String.format(Locale.getDefault(), "%.2f km total • Longest run %.2f km",
+                totalMetres / 1000.0, longestRun / 1000.0));
+        addSimpleCard("FARTLEK SESSIONS", fartlek.length() + " saved session(s)");
+        addText("Achievements are based on workouts saved on this device. Imported or watch-only data is not counted yet.", GREY, 11, false);
+    }
 
-        addSimpleCard(
-                "CONSISTENCY",
-                "Build your training streak."
-        );
-
-        addSimpleCard(
-                "PERSONAL BEST",
-                "Beat one of your previous records."
-        );
+    private void addAchievementCard(String title, String description, boolean unlocked, String progress) {
+        LinearLayout card = new LinearLayout(this);
+        card.setOrientation(LinearLayout.VERTICAL);
+        card.setPadding(dp(16), dp(15), dp(16), dp(15));
+        card.setBackground(background(CARD, 16));
+        LinearLayout top = new LinearLayout(this);
+        top.setGravity(Gravity.CENTER_VERTICAL);
+        TextView name = text(title, unlocked ? GREEN : GOLD, 14, true);
+        top.addView(name, new LinearLayout.LayoutParams(0, -2, 1));
+        TextView status = text(unlocked ? "UNLOCKED ✓" : "IN PROGRESS", unlocked ? GREEN : GREY, 10, true);
+        top.addView(status);
+        card.addView(top);
+        TextView detail = text(description, GREY, 12, false);
+        LinearLayout.LayoutParams dp = new LinearLayout.LayoutParams(-1, -2);
+        dp.topMargin = DashboardActivity.this.dp(7);
+        card.addView(detail, dp);
+        TextView value = text(progress, unlocked ? GREEN : WHITE, 11, true);
+        LinearLayout.LayoutParams vp = new LinearLayout.LayoutParams(-1, -2);
+        vp.topMargin = DashboardActivity.this.dp(8);
+        card.addView(value, vp);
+        addView(mainLayout, card, 9);
     }
 
     // SETTINGS
