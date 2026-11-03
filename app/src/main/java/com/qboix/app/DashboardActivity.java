@@ -8,23 +8,24 @@ import android.graphics.drawable.GradientDrawable;
 import android.widget.FrameLayout;
 import android.widget.ImageView;
 import android.os.Bundle;
+import android.os.Handler;
+import android.os.Looper;
 import android.view.Gravity;
 import android.view.View;
 import android.widget.LinearLayout;
+import android.widget.Button;
+import android.widget.Toast;
 import android.widget.ScrollView;
 import android.widget.TextView;
-import android.widget.Toast;
-import android.widget.VideoView;
-import android.media.MediaPlayer;
-import android.net.Uri;
-import android.os.Build;
-import android.provider.Settings;
-import java.io.File;
 import org.json.JSONArray;
 import org.json.JSONObject;
 import java.text.SimpleDateFormat;
 import java.util.Date;
 import java.util.Locale;
+import android.provider.Settings;
+import android.os.Build;
+import android.net.Uri;
+import java.io.File;
 
 
 public class DashboardActivity extends Activity {
@@ -42,6 +43,9 @@ public class DashboardActivity extends Activity {
     private String currentPage = "Home";
     private static final int REQUEST_UPDATE_INSTALL_PERMISSION = 8301;
     private File pendingUpdateApk;
+    private final Handler watchRefreshHandler = new Handler(Looper.getMainLooper());
+    private final Runnable watchRefresh = new Runnable(){ @Override public void run(){ refreshWatchMetrics(); watchRefreshHandler.postDelayed(this,1000); } };
+    private TextView watchHeartValue, watchOxygenValue, watchStepsValue, watchCaloriesValue, watchConnectionLabel;
 
     private final String[] tabs = {
             "Home", "Activity", "Training", "Maps", "You"
@@ -67,6 +71,13 @@ public class DashboardActivity extends Activity {
     }
 
     @Override
+    protected void onResume() {
+        super.onResume();
+        if (mainLayout != null && "Home".equals(currentPage)) showPage("Home");
+        watchRefreshHandler.removeCallbacks(watchRefresh); watchRefreshHandler.post(watchRefresh);
+    }
+
+    @Override
     public void onBackPressed() {
         if (!"Home".equals(currentPage)) {
             showPage("Home");
@@ -82,6 +93,10 @@ public class DashboardActivity extends Activity {
         wallpaper.setImageResource(R.drawable.home_runner_bg);
         wallpaper.setScaleType(ImageView.ScaleType.CENTER_CROP);
         frame.addView(wallpaper, new FrameLayout.LayoutParams(-1, -1));
+
+        View darkWash = new View(this);
+        darkWash.setBackgroundColor(Color.argb(105, 0, 0, 0));
+        frame.addView(darkWash, new FrameLayout.LayoutParams(-1, -1));
 
         LinearLayout root = new LinearLayout(this);
         root.setOrientation(LinearLayout.VERTICAL);
@@ -227,6 +242,8 @@ public class DashboardActivity extends Activity {
         top.addView(settings);
         mainLayout.addView(top);
         addSpace(12);
+        // Show live QX11 metrics immediately below the brand header.
+        addConnectedWatchBar();
 
         // Cinematic welcome hero with layered night-to-sunset gradient
         LinearLayout hero = new LinearLayout(this);
@@ -273,6 +290,69 @@ public class DashboardActivity extends Activity {
         addView(mainLayout, stats2, 8);
         addSpace(16);
         addText("Welcome, " + name, GREY, 12, false);
+    }
+
+    private void addConnectedWatchBar() {
+        if (!WatchDataStore.isConnected(this)) return;
+        LinearLayout card = new LinearLayout(this);
+        card.setOrientation(LinearLayout.VERTICAL);
+        card.setPadding(dp(12), dp(10), dp(12), dp(10));
+        GradientDrawable bg = background(Color.argb(235, 8, 24, 35), 16);
+        bg.setStroke(dp(1), Color.rgb(55, 190, 125));
+        card.setBackground(bg);
+        TextView heading = text("QX11 CONNECTED  •  LIVE WATCH", GREEN, 10, true);
+        card.addView(heading);
+        LinearLayout metrics = new LinearLayout(this);
+        metrics.setOrientation(LinearLayout.HORIZONTAL);
+        addWatchMetric(metrics, "♥", "HEART", "heart", "BPM");
+        addWatchMetric(metrics, "◉", "SpO₂", "spo2", "%");
+        addWatchMetric(metrics, "↗", "STEPS", "steps", "");
+        addWatchMetric(metrics, "⚡", "CAL", "calories", "kcal");
+        LinearLayout.LayoutParams mp = new LinearLayout.LayoutParams(-1, -2);
+        mp.topMargin = dp(7);
+        card.addView(metrics, mp);
+        LinearLayout.LayoutParams cp = new LinearLayout.LayoutParams(-1, -2);
+        cp.topMargin = dp(9);
+        mainLayout.addView(card, cp);
+    }
+
+    private void addWatchMetric(LinearLayout row, String icon, String title, String key, String unit) {
+        LinearLayout cell = new LinearLayout(this);
+        cell.setOrientation(LinearLayout.VERTICAL);
+        cell.setGravity(Gravity.CENTER);
+        TextView label = text(title, GREY, 9, true);
+        label.setGravity(Gravity.CENTER);
+        cell.addView(label);
+        int value = WatchDataStore.get(this, key);
+        String shown = value < 0 ? "—" : String.valueOf(value);
+        TextView number = text(shown, WHITE, 19, true);
+        number.setGravity(Gravity.CENTER);
+        cell.addView(number);
+        if (!unit.isEmpty()) {
+            TextView suffix = text(unit, GREEN, 8, false);
+            suffix.setGravity(Gravity.CENTER);
+            cell.addView(suffix);
+        }
+        row.addView(cell, new LinearLayout.LayoutParams(0, -2, 1));
+    }
+
+    private void refreshWatchMetrics() {
+        if (watchHeartValue == null) return;
+        int heart = WatchDataStore.get(this, "heart");
+        int oxygen = WatchDataStore.get(this, "spo2");
+        int steps = WatchDataStore.get(this, "steps");
+        int calories = WatchDataStore.get(this, "calories");
+        watchHeartValue.setText(heart < 0 ? "—" : String.valueOf(heart));
+        watchOxygenValue.setText(oxygen < 0 ? "—" : String.valueOf(oxygen));
+        watchStepsValue.setText(steps < 0 ? "—" : String.valueOf(steps));
+        watchCaloriesValue.setText(calories < 0 ? "—" : String.valueOf(calories));
+        boolean watchConnected = Qx11KeepAliveService.hasActiveConnection(this);
+        if (!watchConnected && WatchDataStore.isConnected(this)) WatchDataStore.setConnected(this, false);
+        if (watchConnectionLabel != null) {
+            watchConnectionLabel.setText(watchConnected
+                    ? "QX11 CONNECTED  •  LIVE WATCH"
+                    : "QX11 DISCONNECTED  •  LAST READINGS");
+        }
     }
 
     private void startGpsActivity(String activityType) {
@@ -331,10 +411,15 @@ public class DashboardActivity extends Activity {
     }
 
     private void showMaps() {
-        pageHeading("MAPS");
-        addText("Explore your routes and running locations.", GREY, 14, false);
-        addActionCard("GPS ROUTES", "View routes recorded during your runs", GOLD,
+        pageHeading("MAPS & ROUTES");
+        addText("Explore your recorded routes and start a new GPS route.", GREY, 14, false);
+        addSpace(10);
+        addActionCard("RECORDED GPS ROUTES", "Open your route history, pace charts and activity map.", BLUE,
                 () -> startActivity(new Intent(DashboardActivity.this, PerformanceAnalyticsActivity.class)));
+        addActionCard("START LIVE ROUTE", "Record a new run and watch your route appear as you move.", GREEN,
+                () -> startActivity(new Intent(DashboardActivity.this, GpsRunActivity.class)));
+        addActionCard("WORKOUT HISTORY", "Review saved runs and previous routes.", GOLD,
+                () -> startActivity(new Intent(DashboardActivity.this, WorkoutHistoryActivity.class)));
     }
 
     // ACTIVITIES
@@ -347,111 +432,145 @@ public class DashboardActivity extends Activity {
         addSpace(8);
 
         addActivityTile("START GPS RUN", "Record distance, pace, time and route",
-                GREEN, "▶", () -> startActivity(new Intent(
+                GREEN, "🏃‍♂️", () -> startActivity(new Intent(
                         DashboardActivity.this, GpsRunActivity.class)));
 
         addActivityTile("PERFORMANCE ANALYTICS", "Charts, pace trends and GPS routes",
-                BLUE, "▥", () -> startActivity(new Intent(
+                BLUE, "📊", () -> startActivity(new Intent(
                         DashboardActivity.this, PerformanceAnalyticsActivity.class)));
 
         addActivityTile("WORKOUT HISTORY", "Your completed training sessions",
-                GOLD, "◷", () -> startActivity(new Intent(
+                GOLD, "🕘", () -> startActivity(new Intent(
                         DashboardActivity.this, WorkoutHistoryActivity.class)));
 
         addActivityTile("RUNNING REPORTS", "Create and share Q-BOIX PDF reports",
-                Color.rgb(72, 190, 170), "▤", () -> startActivity(new Intent(
+                Color.rgb(72, 190, 170), "📋", () -> startActivity(new Intent(
                         DashboardActivity.this, WorkoutReportsActivity.class)));
 
         addActivityTile("PERSONAL RECORDS", "Your best performances",
-                Color.rgb(165, 125, 235), "★", () -> showPage("Records"));
+                Color.rgb(165, 125, 235), "🏆", () -> showPage("Records"));
 
         addSpace(10);
-        TextView videoTitle = text("Q-BOIX ATHLETE SHOWCASE", GOLD, 12, true);
-        videoTitle.setLetterSpacing(0.08f);
-        mainLayout.addView(videoTitle);
 
-        FrameLayout videoFrame = new FrameLayout(this);
-        GradientDrawable videoShape = background(Color.rgb(8, 12, 19), 20);
-        videoShape.setStroke(dp(1), Color.argb(150, 215, 181, 91));
-        videoFrame.setBackground(videoShape);
-        videoFrame.setClipToOutline(true);
-        videoFrame.setElevation(dp(5));
+        LinearLayout motivationCard = new LinearLayout(this);
+        motivationCard.setOrientation(LinearLayout.VERTICAL);
+        motivationCard.setGravity(Gravity.CENTER);
+        motivationCard.setPadding(dp(20), dp(19), dp(20), dp(19));
+        GradientDrawable motivationBackground = new GradientDrawable(
+                GradientDrawable.Orientation.TL_BR,
+                new int[]{Color.rgb(10, 31, 48), Color.rgb(12, 57, 48),
+                        Color.rgb(20, 25, 38)});
+        motivationBackground.setCornerRadius(dp(20));
+        motivationBackground.setStroke(dp(1), Color.argb(170, 215, 181, 91));
+        motivationCard.setBackground(motivationBackground);
+        motivationCard.setElevation(dp(5));
 
-        VideoView showcase = new VideoView(this);
-        FrameLayout.LayoutParams videoParams = new FrameLayout.LayoutParams(
-                -1, -1, Gravity.CENTER);
-        videoFrame.addView(showcase, videoParams);
+        TextView runnerEmoji = text("🏃‍♂️  ⚡  🏅", GOLD, 27, true);
+        runnerEmoji.setGravity(Gravity.CENTER);
+        motivationCard.addView(runnerEmoji);
 
-        TextView videoFallback = text("Loading Q-BOIX video…", GREY, 12, false);
-        videoFallback.setGravity(Gravity.CENTER);
-        videoFrame.addView(videoFallback, new FrameLayout.LayoutParams(
-                -1, -1, Gravity.CENTER));
+        TextView motivationTitle = text("Q-BOIX MINDSET", GOLD, 11, true);
+        motivationTitle.setLetterSpacing(0.16f);
+        LinearLayout.LayoutParams motivationTitleParams =
+                new LinearLayout.LayoutParams(-2, -2);
+        motivationTitleParams.topMargin = dp(12);
+        motivationCard.addView(motivationTitle, motivationTitleParams);
 
-        showcase.setVideoURI(Uri.parse("android.resource://" +
-                getPackageName() + "/" + R.raw.activity_showcase));
-        showcase.setOnPreparedListener(player -> {
-            videoFallback.setVisibility(View.GONE);
-            player.setLooping(true);
-            showcase.start();
-        });
-        showcase.setOnErrorListener((player, what, extra) -> {
-            videoFallback.setVisibility(View.VISIBLE);
-            videoFallback.setText("Video could not be played. Check the MP4 file.");
-            return true;
-        });
+        TextView motivationQuote = text(
+                "Your pace. Your path. Your progress.\nNever stop moving.",
+                WHITE, 19, true);
+        motivationQuote.setGravity(Gravity.CENTER);
+        motivationQuote.setLineSpacing(dp(4), 1.0f);
+        LinearLayout.LayoutParams quoteParams =
+                new LinearLayout.LayoutParams(-1, -2);
+        quoteParams.topMargin = dp(8);
+        motivationCard.addView(motivationQuote, quoteParams);
 
-        LinearLayout.LayoutParams videoCardParams =
-                new LinearLayout.LayoutParams(-1, dp(205));
-        videoCardParams.topMargin = dp(9);
-        videoCardParams.bottomMargin = dp(12);
-        mainLayout.addView(videoFrame, videoCardParams);
+        TextView motivationFooter = text(
+                "DISCIPLINE TODAY • STRONGER TOMORROW", GREY, 9, true);
+        motivationFooter.setLetterSpacing(0.08f);
+        LinearLayout.LayoutParams footerParams =
+                new LinearLayout.LayoutParams(-2, -2);
+        footerParams.topMargin = dp(13);
+        motivationCard.addView(motivationFooter, footerParams);
+
+        LinearLayout.LayoutParams motivationParams =
+                new LinearLayout.LayoutParams(-1, dp(190));
+        motivationParams.topMargin = dp(9);
+        motivationParams.bottomMargin = dp(12);
+        mainLayout.addView(motivationCard, motivationParams);
     }
 
     private void addActivityTile(String title, String description,
                                  int accent, String symbol, Runnable action) {
-        LinearLayout tile = new LinearLayout(this);
-        tile.setOrientation(LinearLayout.HORIZONTAL);
-        tile.setGravity(Gravity.CENTER_VERTICAL);
-        tile.setPadding(dp(13), dp(8), dp(13), dp(8));
+        FrameLayout tile = new FrameLayout(this);
+        tile.setClipToOutline(true);
+        tile.setElevation(dp(4));
 
-        GradientDrawable tileBackground = new GradientDrawable(
+        int sceneRes;
+        if (title.contains("GPS RUN")) sceneRes = R.drawable.qboix_home_run;
+        else if (title.contains("ANALYTICS")) sceneRes = R.drawable.performance_analytics_bg;
+        else if (title.contains("HISTORY")) sceneRes = R.drawable.qboix_home_jog;
+        else if (title.contains("REPORTS")) sceneRes = R.drawable.qboix_home_walk;
+        else sceneRes = R.drawable.home_runner_bg;
+
+        GradientDrawable tileShape = background(Color.rgb(10, 18, 28), 18);
+        tileShape.setStroke(dp(1), Color.argb(155,
+                Color.red(accent), Color.green(accent), Color.blue(accent)));
+        tile.setBackground(tileShape);
+
+        ImageView scene = new ImageView(this);
+        scene.setImageResource(sceneRes);
+        scene.setScaleType(ImageView.ScaleType.CENTER_CROP);
+        tile.addView(scene, new FrameLayout.LayoutParams(-1, -1));
+
+        View shade = new View(this);
+        shade.setBackground(new GradientDrawable(
                 GradientDrawable.Orientation.LEFT_RIGHT,
-                new int[]{Color.argb(235, 15, 19, 28),
-                        Color.argb(218, 24, 27, 35)});
-        tileBackground.setCornerRadius(dp(15));
-        tileBackground.setStroke(dp(1), Color.argb(105, Color.red(accent), Color.green(accent), Color.blue(accent)));
-        tile.setBackground(tileBackground);
-        tile.setElevation(dp(3));
-        tile.setClickable(true);
-        tile.setFocusable(true);
+                new int[]{Color.argb(225, 4, 10, 18),
+                        Color.argb(175, 5, 13, 22), Color.argb(85, 5, 12, 20)}));
+        tile.addView(shade, new FrameLayout.LayoutParams(-1, -1));
 
-        TextView icon = text(symbol, accent, 23, true);
-        icon.setGravity(Gravity.CENTER);
-        tile.addView(icon, new LinearLayout.LayoutParams(dp(38), dp(38)));
+        LinearLayout content = new LinearLayout(this);
+        content.setOrientation(LinearLayout.HORIZONTAL);
+        content.setGravity(Gravity.CENTER_VERTICAL);
+        content.setPadding(dp(15), dp(9), dp(13), dp(9));
+
+        TextView emoji = text(symbol, WHITE, 29, true);
+        emoji.setGravity(Gravity.CENTER);
+        GradientDrawable emojiBg = background(
+                Color.argb(115, Color.red(accent), Color.green(accent), Color.blue(accent)), 15);
+        emojiBg.setStroke(dp(1), Color.argb(170, 255, 255, 255));
+        emoji.setBackground(emojiBg);
+        content.addView(emoji, new LinearLayout.LayoutParams(dp(53), dp(53)));
 
         LinearLayout details = new LinearLayout(this);
         details.setOrientation(LinearLayout.VERTICAL);
-        details.setPadding(dp(11), 0, dp(5), 0);
+        details.setPadding(dp(13), 0, dp(5), 0);
 
         TextView heading = text(title, WHITE, 13, true);
-        heading.setLetterSpacing(0.025f);
+        heading.setLetterSpacing(0.035f);
         details.addView(heading);
-        TextView sub = text(description, GREY, 10, false);
-        LinearLayout.LayoutParams subParams =
-                new LinearLayout.LayoutParams(-1, -2);
-        subParams.topMargin = dp(3);
+
+        TextView sub = text(description, Color.rgb(225, 231, 238), 10, false);
+        LinearLayout.LayoutParams subParams = new LinearLayout.LayoutParams(-1, -2);
+        subParams.topMargin = dp(4);
         details.addView(sub, subParams);
-        tile.addView(details, new LinearLayout.LayoutParams(0, -2, 1));
+        content.addView(details, new LinearLayout.LayoutParams(0, -2, 1));
 
-        TextView arrow = text("›", accent, 25, true);
+        TextView arrow = text("›", GOLD, 27, true);
         arrow.setGravity(Gravity.CENTER);
-        tile.addView(arrow, new LinearLayout.LayoutParams(dp(22), -2));
+        content.addView(arrow, new LinearLayout.LayoutParams(dp(24), -2));
 
+        tile.addView(content, new FrameLayout.LayoutParams(-1, -1));
+        tile.setClickable(true);
+        tile.setFocusable(true);
+        tile.setContentDescription(title + ". " + description);
         tile.setOnClickListener(v -> action.run());
 
-        LinearLayout.LayoutParams params =
-                new LinearLayout.LayoutParams(-1, dp(64));
-        params.topMargin = dp(6);
+        LinearLayout.LayoutParams params = new LinearLayout.LayoutParams(-1, dp(88));
+        params.topMargin = dp(7);
+        params.bottomMargin = dp(5);
         mainLayout.addView(tile, params);
     }
 
@@ -668,33 +787,85 @@ public class DashboardActivity extends Activity {
     // ACHIEVEMENTS
 
     private void showAchievements() {
-
         pageHeading("ACHIEVEMENTS");
+        addText("Milestones calculated from your saved Q-BOIX workouts.", GREY, 13, false);
+        addSpace(10);
 
-        addText(
-                "Every achievement starts with one step.",
-                GREY, 14, false
-        );
+        JSONArray runs = WorkoutStore.getRunSessions(this);
+        JSONArray fartlek = WorkoutStore.getFartlekSessions(this);
+        int runCount = runs.length();
+        double totalMetres = 0;
+        double longestRun = 0;
+        java.util.HashSet<String> activeDays = new java.util.HashSet<>();
+        int fastest3000 = Integer.MAX_VALUE;
+        for (int i = 0; i < runs.length(); i++) {
+            JSONObject item = runs.optJSONObject(i);
+            if (item == null) continue;
+            double distance = item.optDouble("distanceMeters", 0);
+            totalMetres += Math.max(0, distance);
+            longestRun = Math.max(longestRun, distance);
+            long date = item.optLong("startedAt", 0);
+            if (date > 0) activeDays.add(new SimpleDateFormat("yyyy-MM-dd", Locale.US).format(new Date(date)));
+            JSONArray samples = item.optJSONArray("distanceTimeSamples");
+            if (samples != null) {
+                JSONObject previous = null;
+                for (int j = 0; j < samples.length(); j++) {
+                    JSONObject sample = samples.optJSONObject(j);
+                    if (sample == null) continue;
+                    if (previous != null && previous.optDouble("distanceMeters", 0) <= 3000
+                            && sample.optDouble("distanceMeters", 0) >= 3000) {
+                        int seconds = sample.optInt("elapsedSeconds", Integer.MAX_VALUE);
+                        if (seconds > 0) fastest3000 = Math.min(fastest3000, seconds);
+                        break;
+                    }
+                    previous = sample;
+                }
+            }
+        }
+        boolean firstRun = runCount > 0;
+        boolean tenKm = totalMetres >= 10000;
+        boolean consistency = activeDays.size() >= 3;
+        boolean personalBest = fastest3000 != Integer.MAX_VALUE;
 
-        addSimpleCard(
-                "FIRST RUN",
-                "Record your first running activity."
-        );
+        addAchievementCard("FIRST RUN", "Record your first GPS running activity.",
+                firstRun, runCount > 0 ? runCount + " GPS run(s) recorded" : "Not unlocked yet");
+        addAchievementCard("10 KM MILESTONE", "Accumulate 10 kilometres across your GPS runs.",
+                tenKm, String.format(Locale.getDefault(), "%.2f km accumulated", totalMetres / 1000.0));
+        addAchievementCard("CONSISTENCY", "Train on at least three different days.",
+                consistency, activeDays.size() + " active training day(s) recorded");
+        addAchievementCard("PERSONAL BEST", "Record a GPS 3 km checkpoint time.",
+                personalBest, personalBest ? "3 km checkpoint: " + formatRecordTime(fastest3000)
+                        : "A recorded run reaching 3 km is needed");
 
-        addSimpleCard(
-                "10 KM MILESTONE",
-                "Complete 10 kilometres."
-        );
+        addSpace(10);
+        addText("TRAINING SUMMARY", GOLD, 13, true);
+        addSimpleCard("GPS DISTANCE", String.format(Locale.getDefault(), "%.2f km total • Longest run %.2f km",
+                totalMetres / 1000.0, longestRun / 1000.0));
+        addSimpleCard("FARTLEK SESSIONS", fartlek.length() + " saved session(s)");
+        addText("Achievements are based on workouts saved on this device. Imported or watch-only data is not counted yet.", GREY, 11, false);
+    }
 
-        addSimpleCard(
-                "CONSISTENCY",
-                "Build your training streak."
-        );
-
-        addSimpleCard(
-                "PERSONAL BEST",
-                "Beat one of your previous records."
-        );
+    private void addAchievementCard(String title, String description, boolean unlocked, String progress) {
+        LinearLayout card = new LinearLayout(this);
+        card.setOrientation(LinearLayout.VERTICAL);
+        card.setPadding(dp(16), dp(15), dp(16), dp(15));
+        card.setBackground(background(CARD, 16));
+        LinearLayout top = new LinearLayout(this);
+        top.setGravity(Gravity.CENTER_VERTICAL);
+        TextView name = text(title, unlocked ? GREEN : GOLD, 14, true);
+        top.addView(name, new LinearLayout.LayoutParams(0, -2, 1));
+        TextView status = text(unlocked ? "UNLOCKED ✓" : "IN PROGRESS", unlocked ? GREEN : GREY, 10, true);
+        top.addView(status);
+        card.addView(top);
+        TextView detail = text(description, GREY, 12, false);
+        LinearLayout.LayoutParams dp = new LinearLayout.LayoutParams(-1, -2);
+        dp.topMargin = DashboardActivity.this.dp(7);
+        card.addView(detail, dp);
+        TextView value = text(progress, unlocked ? GREEN : WHITE, 11, true);
+        LinearLayout.LayoutParams vp = new LinearLayout.LayoutParams(-1, -2);
+        vp.topMargin = DashboardActivity.this.dp(8);
+        card.addView(value, vp);
+        addView(mainLayout, card, 9);
     }
 
     // SETTINGS
@@ -703,20 +874,27 @@ public class DashboardActivity extends Activity {
 
         pageHeading("SETTINGS");
 
-        addSimpleCard(
-                "ACCOUNT",
-                "Account and security settings."
+        addActionCard(
+                "CONNECTED APPS & HEALTH DATA",
+                "Connect Q-BOIX with Health Connect and manage fitness data permissions for compatible apps.",
+                BLUE,
+                () -> startActivity(new Intent(DashboardActivity.this, HealthConnectActivity.class))
         );
 
-        addSimpleCard(
-                "UNITS",
-                "Kilometres and miles."
-        );
+        addActionCard("APP CATEGORY",
+                "Q-BOIX • Health & Fitness. View app information.",
+                GOLD, () -> showSettingDialog("APP CATEGORY",
+                        "Q-BOIX is a health and fitness app for running, training, GPS activity and wellness tracking."));
 
-        addSimpleCard(
-                "NOTIFICATIONS",
-                "Training reminders and alerts."
-        );
+        addActionCard("ACCOUNT", "View the account currently signed in on this phone.",
+                BLUE, () -> showSettingDialog("ACCOUNT",
+                        "Name: " + LocalAccountStore.getName(this) + "\\nEmail: " + LocalAccountStore.getEmail(this)));
+
+        addActionCard("UNITS", "Choose kilometres or miles for distance displays.",
+                GOLD, this::showUnitSettings);
+
+        addActionCard("NOTIFICATIONS", "Choose whether training reminders and alerts are enabled.",
+                BLUE, this::showNotificationSettings);
 
         addActionCard(
                 "WATCH CONNECTION",
@@ -725,27 +903,20 @@ public class DashboardActivity extends Activity {
                 () -> startActivity(new Intent(DashboardActivity.this, WatchActivity.class))
         );
 
-        addSimpleCard(
-                "GPS SETTINGS",
-                "Location and tracking preferences."
-        );
+        addActionCard("GPS SETTINGS", "Check location permission and GPS tracking guidance.",
+                BLUE, this::showGpsSettings);
 
-        addSimpleCard(
-                "OFFLINE MODE",
-                "Local workout storage and synchronization."
-        );
+        addActionCard("OFFLINE MODE", "Your runs and workouts are saved locally on this phone.",
+                GREEN, () -> showSettingDialog("OFFLINE MODE",
+                        "Q-BOIX stores completed workouts on this phone. Internet is only needed for online features and checking app updates. Your saved local workouts remain available offline."));
 
-        addActionCard(
-                "APP UPDATES",
-                "Check GitHub for the latest Q-BOIX version. Your workouts and settings stay on this device.",
-                BLUE,
-                this::checkForAppUpdates
-        );
+        addActionCard("PRIVACY", "Understand what Q-BOIX stores on this phone.",
+                GOLD, () -> showSettingDialog("PRIVACY",
+                        "Workout history and app preferences are stored locally. Watch readings are only shown when received from the connected watch. You can manage Android permissions in system settings."));
 
-        addSimpleCard(
-                "PRIVACY",
-                "Manage your data and privacy."
-        );
+        addActionCard("↻  APP UPDATES",
+                "Check GitHub for the latest Q-BOIX version and install it safely.",
+                BLUE, this::checkForAppUpdates);
 
         addActionCard(
                 "LOG OUT",
@@ -760,19 +931,21 @@ public class DashboardActivity extends Activity {
         AppUpdateManager.checkForUpdate(this, new AppUpdateManager.CheckCallback() {
             @Override
             public void onUpToDate(String installedVersion) {
-                showMessage("Q-BOIX is up to date. Installed version: " + installedVersion);
+                showStyledDialog("Q-BOIX IS UP TO DATE",
+                        "Installed version: " + installedVersion,
+                        "GREAT", null, "CLOSE", null);
             }
 
             @Override
             public void onUpdateAvailable(AppUpdateManager.UpdateInfo update) {
-                new android.app.AlertDialog.Builder(DashboardActivity.this)
-                        .setTitle("Q-BOIX update available")
-                        .setMessage("Version " + update.versionName
-                                + " is ready.\n\n" + update.releaseNotes
-                                + "\n\nYour existing workouts, routes, login and settings will be kept.")
-                        .setNegativeButton("Later", null)
-                        .setPositiveButton("Download update", (dialog, which) -> {
-                            Toast.makeText(DashboardActivity.this, "Downloading and verifying Q-BOIX " + update.versionName + "...", Toast.LENGTH_LONG).show();
+                showStyledDialog("Q-BOIX UPDATE AVAILABLE",
+                        "Version " + update.versionName + " is ready.\\n\\n"
+                                + update.releaseNotes
+                                + "\\n\\nYour workouts, routes, login and settings will be kept.",
+                        "DOWNLOAD", () -> {
+                            Toast.makeText(DashboardActivity.this,
+                                    "Downloading and verifying Q-BOIX " + update.versionName + "...",
+                                    Toast.LENGTH_LONG).show();
                             AppUpdateManager.downloadUpdate(DashboardActivity.this, update,
                                     new AppUpdateManager.DownloadCallback() {
                                         @Override
@@ -783,17 +956,19 @@ public class DashboardActivity extends Activity {
 
                                         @Override
                                         public void onError(String message) {
-                                            showMessage("Update was not installed. " + message);
+                                            showStyledDialog("UPDATE DOWNLOAD FAILED", message,
+                                                    "RETRY", () -> checkForAppUpdates(),
+                                                    "CLOSE", null);
                                         }
                                     });
-                        })
-                        .show();
+                        }, "LATER", null);
             }
 
             @Override
             public void onError(String message) {
-                showMessage("Could not check for updates.\n\n" + message
-                        + "\n\nCheck your internet connection and try again.");
+                showStyledDialog("UPDATE CHECK FAILED",
+                        message + "\\n\\nCheck your internet connection and try again.",
+                        "RETRY", () -> checkForAppUpdates(), "CLOSE", null);
             }
         });
     }
@@ -802,23 +977,22 @@ public class DashboardActivity extends Activity {
         if (pendingUpdateApk == null) return;
         if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O
                 && !getPackageManager().canRequestPackageInstalls()) {
-            new android.app.AlertDialog.Builder(this)
-                    .setTitle("Allow Q-BOIX updates")
-                    .setMessage("Android needs your permission to install an update downloaded by Q-BOIX. Enable 'Allow from this source', then return here. Your verified update file is saved.")
-                    .setNegativeButton("Cancel", null)
-                    .setPositiveButton("Open permission", (dialog, which) -> {
+            showStyledDialog("ALLOW Q-BOIX UPDATES",
+                    "Android needs permission to install an update downloaded by Q-BOIX. Enable 'Allow from this source', then return here. Your verified update file is saved.",
+                    "OPEN PERMISSION", () -> {
                         Intent permission = new Intent(
                                 Settings.ACTION_MANAGE_UNKNOWN_APP_SOURCES,
                                 Uri.parse("package:" + getPackageName()));
                         startActivityForResult(permission, REQUEST_UPDATE_INSTALL_PERMISSION);
-                    })
-                    .show();
+                    }, "CANCEL", null);
             return;
         }
         try {
             AppUpdateManager.installApk(this, pendingUpdateApk);
         } catch (Exception e) {
-            showMessage("Android could not open the installer. " + e.getMessage());
+            showStyledDialog("INSTALLER ERROR",
+                    "Android could not open the installer. " + e.getMessage(),
+                    "OK", null, "CLOSE", null);
         }
     }
 
@@ -830,9 +1004,180 @@ public class DashboardActivity extends Activity {
                     && getPackageManager().canRequestPackageInstalls()) {
                 installPendingUpdate();
             } else {
-                showMessage("Install permission was not enabled. Your downloaded update is still saved. Tap APP UPDATES again after enabling it.");
+                showStyledDialog("INSTALL PERMISSION NEEDED",
+                        "Install permission was not enabled. Your downloaded update is still saved. Tap APP UPDATES again after enabling it.",
+                        "OK", null, "CLOSE", null);
             }
         }
+    }
+
+    private void showSettingDialog(String title, String message) {
+        showStyledDialog(title, message, "GOT IT", null, "CLOSE", null);
+    }
+
+    private void showStyledDialog(String title, String message, String positive,
+                                  Runnable action, String negative, Runnable cancelAction) {
+        android.app.Dialog dialog = new android.app.Dialog(this);
+        LinearLayout panel = new LinearLayout(this);
+        panel.setOrientation(LinearLayout.VERTICAL);
+        panel.setPadding(dp(20), dp(18), dp(20), dp(16));
+        GradientDrawable shell = new GradientDrawable(GradientDrawable.Orientation.TL_BR,
+                new int[]{0xFF171923, 0xFF08090D, 0xFF211B10});
+        shell.setCornerRadius(dp(24));
+        shell.setStroke(dp(1), 0xFF8A713C);
+        panel.setBackground(shell);
+        TextView heading = text(title, GOLD, 19, true);
+        heading.setGravity(Gravity.CENTER);
+        panel.addView(heading, new LinearLayout.LayoutParams(-1, dp(44)));
+        View divider = new View(this);
+        divider.setBackgroundColor(0x887F6A35);
+        panel.addView(divider, new LinearLayout.LayoutParams(-1, dp(1)));
+        TextView body = text(message, WHITE, 14, false);
+        body.setLineSpacing(dp(3), 1f);
+        body.setPadding(dp(5), dp(16), dp(5), dp(20));
+        panel.addView(body);
+        LinearLayout buttons = new LinearLayout(this);
+        buttons.setGravity(Gravity.CENTER);
+        Button cancel = styledDialogButton(negative == null ? "CLOSE" : negative, false);
+        Button ok = styledDialogButton(positive, true);
+        buttons.addView(cancel, new LinearLayout.LayoutParams(0, dp(48), 1));
+        LinearLayout.LayoutParams okp = new LinearLayout.LayoutParams(0, dp(48), 1);
+        okp.leftMargin = dp(9);
+        buttons.addView(ok, okp);
+        panel.addView(buttons);
+        cancel.setOnClickListener(v -> { dialog.dismiss(); if (cancelAction != null) cancelAction.run(); });
+        ok.setOnClickListener(v -> { dialog.dismiss(); if (action != null) action.run(); });
+        dialog.setContentView(panel);
+        dialog.show();
+        if (dialog.getWindow() != null) {
+            dialog.getWindow().setBackgroundDrawableResource(android.R.color.transparent);
+            dialog.getWindow().setLayout((int)(getResources().getDisplayMetrics().widthPixels * .88), -2);
+        }
+    }
+
+    private Button styledDialogButton(String caption, boolean gold) {
+        Button button = new Button(this);
+        button.setText(caption);
+        button.setAllCaps(false);
+        button.setTextSize(12);
+        button.setTextColor(gold ? Color.BLACK : WHITE);
+        GradientDrawable shape = new GradientDrawable();
+        shape.setColor(gold ? GOLD : 0xFF292B34);
+        shape.setCornerRadius(dp(15));
+        shape.setStroke(dp(1), gold ? 0xFFD7B55B : 0x667F6A35);
+        button.setBackground(shape);
+        return button;
+    }
+
+    private void showUnitSettings() {
+        android.content.SharedPreferences prefs = getSharedPreferences("qboix_preferences", MODE_PRIVATE);
+        final boolean[] miles = {prefs.getBoolean("use_miles", false)};
+        android.app.Dialog dialog = new android.app.Dialog(this);
+        LinearLayout panel = new LinearLayout(this);
+        panel.setOrientation(LinearLayout.VERTICAL);
+        panel.setPadding(dp(18), dp(16), dp(18), dp(16));
+        GradientDrawable shell = new GradientDrawable(GradientDrawable.Orientation.TL_BR,
+                new int[]{0xFF171923, 0xFF08090D, 0xFF211B10});
+        shell.setCornerRadius(dp(24));
+        shell.setStroke(dp(1), 0xFF8A713C);
+        panel.setBackground(shell);
+        TextView title = text("DISTANCE UNITS", GOLD, 19, true);
+        title.setGravity(Gravity.CENTER);
+        panel.addView(title, new LinearLayout.LayoutParams(-1, dp(44)));
+        View divider = new View(this);
+        divider.setBackgroundColor(0x887F6A35);
+        panel.addView(divider, new LinearLayout.LayoutParams(-1, dp(1)));
+        LinearLayout km = unitChoiceRow("Kilometres (km)", !miles[0]);
+        LinearLayout mi = unitChoiceRow("Miles (mi)", miles[0]);
+        panel.addView(km, new LinearLayout.LayoutParams(-1, dp(62)));
+        panel.addView(mi, new LinearLayout.LayoutParams(-1, dp(62)));
+        Runnable refresh = () -> { updateUnitChoice(km, !miles[0]); updateUnitChoice(mi, miles[0]); };
+        km.setOnClickListener(v -> { miles[0] = false; refresh.run(); });
+        mi.setOnClickListener(v -> { miles[0] = true; refresh.run(); });
+        LinearLayout buttons = new LinearLayout(this);
+        buttons.setGravity(Gravity.CENTER);
+        Button cancel = styledDialogButton("CANCEL", false);
+        Button save = styledDialogButton("SAVE", true);
+        buttons.addView(cancel, new LinearLayout.LayoutParams(0, dp(48), 1));
+        LinearLayout.LayoutParams savep = new LinearLayout.LayoutParams(0, dp(48), 1);
+        savep.leftMargin = dp(9);
+        buttons.addView(save, savep);
+        LinearLayout.LayoutParams bp = new LinearLayout.LayoutParams(-1, dp(50));
+        bp.topMargin = dp(8);
+        panel.addView(buttons, bp);
+        cancel.setOnClickListener(v -> dialog.dismiss());
+        save.setOnClickListener(v -> {
+            prefs.edit().putBoolean("use_miles", miles[0]).apply();
+            dialog.dismiss();
+            Toast.makeText(this, "Distance units saved", Toast.LENGTH_SHORT).show();
+        });
+        dialog.setContentView(panel);
+        dialog.show();
+        if (dialog.getWindow() != null) {
+            dialog.getWindow().setBackgroundDrawableResource(android.R.color.transparent);
+            dialog.getWindow().setLayout((int)(getResources().getDisplayMetrics().widthPixels * .88), -2);
+        }
+    }
+
+    private LinearLayout unitChoiceRow(String caption, boolean selected) {
+        LinearLayout row = new LinearLayout(this);
+        row.setGravity(Gravity.CENTER_VERTICAL);
+        row.setPadding(dp(8), 0, dp(8), 0);
+        TextView label = text(caption, WHITE, 17, false);
+        row.addView(label, new LinearLayout.LayoutParams(0, -2, 1));
+        TextView indicator = text(selected ? "✓" : "", Color.BLACK, 17, true);
+        indicator.setGravity(Gravity.CENTER);
+        GradientDrawable circle = new GradientDrawable();
+        circle.setShape(GradientDrawable.OVAL);
+        circle.setColor(selected ? GREEN : Color.TRANSPARENT);
+        circle.setStroke(dp(2), selected ? GOLD : GREY);
+        indicator.setBackground(circle);
+        row.addView(indicator, new LinearLayout.LayoutParams(dp(30), dp(30)));
+        return row;
+    }
+
+    private void updateUnitChoice(LinearLayout row, boolean selected) {
+        TextView indicator = (TextView) row.getChildAt(1);
+        indicator.setText(selected ? "✓" : "");
+        GradientDrawable circle = new GradientDrawable();
+        circle.setShape(GradientDrawable.OVAL);
+        circle.setColor(selected ? GREEN : Color.TRANSPARENT);
+        circle.setStroke(dp(2), selected ? GOLD : GREY);
+        indicator.setBackground(circle);
+    }
+
+    private void showNotificationSettings() {
+        android.content.SharedPreferences prefs = getSharedPreferences("qboix_preferences", MODE_PRIVATE);
+        boolean enabled = prefs.getBoolean("training_notifications", true);
+        showStyledDialog("TRAINING NOTIFICATIONS",
+                "Training reminders are currently " + (enabled ? "ON" : "OFF") +
+                ". Android may also control notifications in system settings.",
+                enabled ? "TURN OFF" : "TURN ON", () -> {
+                    prefs.edit().putBoolean("training_notifications", !enabled).apply();
+                    Toast.makeText(this, "Notification preference saved", Toast.LENGTH_SHORT).show();
+                }, "CLOSE", null);
+    }
+
+    private void showGpsSettings() {
+        boolean fine = android.os.Build.VERSION.SDK_INT < 23 ||
+                checkSelfPermission(android.Manifest.permission.ACCESS_FINE_LOCATION) ==
+                        android.content.pm.PackageManager.PERMISSION_GRANTED;
+        String message = "Precise location permission: " + (fine ? "GRANTED" : "NOT GRANTED") +
+                "\n\nGPS recording needs location permission and the phone's Location setting switched on.";
+        showStyledDialog("GPS SETTINGS", message,
+                fine ? "OPEN LOCATION SETTINGS" : "GRANT LOCATION", () -> {
+                    if (!fine && android.os.Build.VERSION.SDK_INT >= 23) {
+                        requestPermissions(new String[]{android.Manifest.permission.ACCESS_FINE_LOCATION,
+                                android.Manifest.permission.ACCESS_COARSE_LOCATION}, 77);
+                    } else {
+                        try {
+                            startActivity(new Intent(android.provider.Settings.ACTION_LOCATION_SOURCE_SETTINGS));
+                        } catch (Exception e) {
+                            showStyledDialog("LOCATION", "Open Android Settings and enable Location.",
+                                    "GOT IT", null, "CLOSE", null);
+                        }
+                    }
+                }, "CLOSE", null);
     }
 
     // REUSABLE UI COMPONENTS
