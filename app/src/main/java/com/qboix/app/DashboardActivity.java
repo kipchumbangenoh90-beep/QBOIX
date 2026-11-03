@@ -16,6 +16,9 @@ import android.widget.TextView;
 import android.widget.VideoView;
 import android.media.MediaPlayer;
 import android.net.Uri;
+import android.os.Build;
+import android.provider.Settings;
+import java.io.File;
 import org.json.JSONArray;
 import org.json.JSONObject;
 import java.text.SimpleDateFormat;
@@ -36,6 +39,8 @@ public class DashboardActivity extends Activity {
     private LinearLayout mainLayout;
     private LinearLayout navigation;
     private String currentPage = "Home";
+    private static final int REQUEST_UPDATE_INSTALL_PERMISSION = 8301;
+    private File pendingUpdateApk;
 
     private final String[] tabs = {
             "Home", "Activity", "Training", "Maps", "You"
@@ -729,6 +734,13 @@ public class DashboardActivity extends Activity {
                 "Local workout storage and synchronization."
         );
 
+        addActionCard(
+                "APP UPDATES",
+                "Check GitHub for the latest Q-BOIX version. Your workouts and settings stay on this device.",
+                BLUE,
+                this::checkForAppUpdates
+        );
+
         addSimpleCard(
                 "PRIVACY",
                 "Manage your data and privacy."
@@ -740,6 +752,86 @@ public class DashboardActivity extends Activity {
                 GREY,
                 this::confirmLogout
         );
+    }
+
+    private void checkForAppUpdates() {
+        showMessage("Checking the latest Q-BOIX release on GitHub...");
+        AppUpdateManager.checkForUpdate(this, new AppUpdateManager.CheckCallback() {
+            @Override
+            public void onUpToDate(String installedVersion) {
+                showMessage("Q-BOIX is up to date. Installed version: " + installedVersion);
+            }
+
+            @Override
+            public void onUpdateAvailable(AppUpdateManager.UpdateInfo update) {
+                new android.app.AlertDialog.Builder(DashboardActivity.this)
+                        .setTitle("Q-BOIX update available")
+                        .setMessage("Version " + update.versionName
+                                + " is ready.\n\n" + update.releaseNotes
+                                + "\n\nYour existing workouts, routes, login and settings will be kept.")
+                        .setNegativeButton("Later", null)
+                        .setPositiveButton("Download update", (dialog, which) -> {
+                            showMessage("Downloading and verifying Q-BOIX " + update.versionName + "...");
+                            AppUpdateManager.downloadUpdate(DashboardActivity.this, update,
+                                    new AppUpdateManager.DownloadCallback() {
+                                        @Override
+                                        public void onDownloaded(File apk) {
+                                            pendingUpdateApk = apk;
+                                            installPendingUpdate();
+                                        }
+
+                                        @Override
+                                        public void onError(String message) {
+                                            showMessage("Update was not installed. " + message);
+                                        }
+                                    });
+                        })
+                        .show();
+            }
+
+            @Override
+            public void onError(String message) {
+                showMessage("Could not check for updates.\n\n" + message
+                        + "\n\nCheck your internet connection and try again.");
+            }
+        });
+    }
+
+    private void installPendingUpdate() {
+        if (pendingUpdateApk == null) return;
+        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O
+                && !getPackageManager().canRequestPackageInstalls()) {
+            new android.app.AlertDialog.Builder(this)
+                    .setTitle("Allow Q-BOIX updates")
+                    .setMessage("Android needs your permission to install an update downloaded by Q-BOIX. Enable 'Allow from this source', then return here. Your verified update file is saved.")
+                    .setNegativeButton("Cancel", null)
+                    .setPositiveButton("Open permission", (dialog, which) -> {
+                        Intent permission = new Intent(
+                                Settings.ACTION_MANAGE_UNKNOWN_APP_SOURCES,
+                                Uri.parse("package:" + getPackageName()));
+                        startActivityForResult(permission, REQUEST_UPDATE_INSTALL_PERMISSION);
+                    })
+                    .show();
+            return;
+        }
+        try {
+            AppUpdateManager.installApk(this, pendingUpdateApk);
+        } catch (Exception e) {
+            showMessage("Android could not open the installer. " + e.getMessage());
+        }
+    }
+
+    @Override
+    protected void onActivityResult(int requestCode, int resultCode, Intent data) {
+        super.onActivityResult(requestCode, resultCode, data);
+        if (requestCode == REQUEST_UPDATE_INSTALL_PERMISSION) {
+            if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O
+                    && getPackageManager().canRequestPackageInstalls()) {
+                installPendingUpdate();
+            } else {
+                showMessage("Install permission was not enabled. Your downloaded update is still saved. Tap APP UPDATES again after enabling it.");
+            }
+        }
     }
 
     // REUSABLE UI COMPONENTS
