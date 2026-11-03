@@ -18,7 +18,7 @@ android {
         minSdk 26
         targetSdk 34
         versionCode providers.gradleProperty('qboixVersionCode').getOrElse('1').toInteger()
-        versionName providers.gradleProperty('qboixVersionName').getOrElse('0.1').get()
+        versionName providers.gradleProperty('qboixVersionName').getOrElse('0.1')
     }
 
     signingConfigs {
