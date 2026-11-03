@@ -812,25 +812,20 @@ public class DashboardActivity extends Activity {
                 () -> startActivity(new Intent(DashboardActivity.this, HealthConnectActivity.class))
         );
 
-        addSimpleCard(
-                "APP CATEGORY",
-                "Q-BOIX • Health & Fitness. Fitness tracking, running, training and wellness data."
-        );
+        addActionCard("APP CATEGORY",
+                "Q-BOIX • Health & Fitness. View app information.",
+                GOLD, () -> showSettingDialog("APP CATEGORY",
+                        "Q-BOIX is a health and fitness app for running, training, GPS activity and wellness tracking."));
 
-        addSimpleCard(
-                "ACCOUNT",
-                "Account and security settings."
-        );
+        addActionCard("ACCOUNT", "View the account currently signed in on this phone.",
+                BLUE, () -> showSettingDialog("ACCOUNT",
+                        "Name: " + LocalAccountStore.getName(this) + "\\nEmail: " + LocalAccountStore.getEmail(this)));
 
-        addSimpleCard(
-                "UNITS",
-                "Kilometres and miles."
-        );
+        addActionCard("UNITS", "Choose kilometres or miles for distance displays.",
+                GOLD, this::showUnitSettings);
 
-        addSimpleCard(
-                "NOTIFICATIONS",
-                "Training reminders and alerts."
-        );
+        addActionCard("NOTIFICATIONS", "Choose whether training reminders and alerts are enabled.",
+                BLUE, this::showNotificationSettings);
 
         addActionCard(
                 "WATCH CONNECTION",
@@ -839,20 +834,19 @@ public class DashboardActivity extends Activity {
                 () -> startActivity(new Intent(DashboardActivity.this, WatchActivity.class))
         );
 
-        addSimpleCard(
-                "GPS SETTINGS",
-                "Location and tracking preferences."
-        );
+        addActionCard("GPS SETTINGS", "Check location permission and GPS tracking guidance.",
+                BLUE, this::showGpsSettings);
 
-        addSimpleCard(
-                "OFFLINE MODE",
-                "Local workout storage and synchronization."
-        );
+        addActionCard("OFFLINE MODE", "Your runs and workouts are saved locally on this phone.",
+                GREEN, () -> showSettingDialog("OFFLINE MODE",
+                        "Q-BOIX stores completed workouts on this phone. Internet is only needed for online features and checking app updates. Your saved local workouts remain available offline."));
 
-        addSimpleCard(
-                "PRIVACY",
-                "Manage your data and privacy."
-        );
+        addActionCard("PRIVACY", "Understand what Q-BOIX stores on this phone.",
+                GOLD, () -> showSettingDialog("PRIVACY",
+                        "Workout history and app preferences are stored locally. Watch readings are only shown when received from the connected watch. You can manage Android permissions in system settings."));
+
+        addActionCard("UPDATE Q-BOIX", "Check GitHub for a newer version and install it without clearing app data.",
+                GREEN, () -> startActivity(new Intent(DashboardActivity.this, UpdateActivity.class)));
 
         addActionCard(
                 "LOG OUT",
@@ -860,6 +854,66 @@ public class DashboardActivity extends Activity {
                 GREY,
                 this::confirmLogout
         );
+    }
+
+    private void showSettingDialog(String title, String message) {
+        new android.app.AlertDialog.Builder(this)
+                .setTitle(title)
+                .setMessage(message)
+                .setPositiveButton("GOT IT", null)
+                .show();
+    }
+
+    private void showUnitSettings() {
+        android.content.SharedPreferences prefs = getSharedPreferences("qboix_preferences", MODE_PRIVATE);
+        String[] choices = {"Kilometres (km)", "Miles (mi)"};
+        int selected = prefs.getBoolean("use_miles", false) ? 1 : 0;
+        new android.app.AlertDialog.Builder(this)
+                .setTitle("DISTANCE UNITS")
+                .setSingleChoiceItems(choices, selected, (dialog, which) -> {
+                    prefs.edit().putBoolean("use_miles", which == 1).apply();
+                    dialog.dismiss();
+                    showMessage("Distance unit saved: " + (which == 1 ? "Miles" : "Kilometres") +
+                            ". New distance displays will use this preference where supported.");
+                })
+                .setNegativeButton("CANCEL", null)
+                .show();
+    }
+
+    private void showNotificationSettings() {
+        android.content.SharedPreferences prefs = getSharedPreferences("qboix_preferences", MODE_PRIVATE);
+        boolean enabled = prefs.getBoolean("training_notifications", true);
+        new android.app.AlertDialog.Builder(this)
+                .setTitle("TRAINING NOTIFICATIONS")
+                .setMessage("Training reminders preference: " + (enabled ? "ON" : "OFF") +
+                        "\\n\\nUse the switch to save your preference. Android may also control notifications in system settings.")
+                .setPositiveButton(enabled ? "TURN OFF" : "TURN ON", (dialog, which) -> {
+                    prefs.edit().putBoolean("training_notifications", !enabled).apply();
+                    showMessage("Training reminders preference saved.");
+                })
+                .setNegativeButton("CLOSE", null)
+                .show();
+    }
+
+    private void showGpsSettings() {
+        boolean fine = android.os.Build.VERSION.SDK_INT < 23 ||
+                checkSelfPermission(android.Manifest.permission.ACCESS_FINE_LOCATION) ==
+                        android.content.pm.PackageManager.PERMISSION_GRANTED;
+        new android.app.AlertDialog.Builder(this)
+                .setTitle("GPS SETTINGS")
+                .setMessage("Precise location permission: " + (fine ? "GRANTED" : "NOT GRANTED") +
+                        "\\n\\nGPS recording needs location permission and the phone's Location setting switched on.")
+                .setPositiveButton(fine ? "OPEN LOCATION SETTINGS" : "GRANT LOCATION", (dialog, which) -> {
+                    if (!fine && android.os.Build.VERSION.SDK_INT >= 23) {
+                        requestPermissions(new String[]{android.Manifest.permission.ACCESS_FINE_LOCATION,
+                                android.Manifest.permission.ACCESS_COARSE_LOCATION}, 77);
+                    } else {
+                        try { startActivity(new Intent(android.provider.Settings.ACTION_LOCATION_SOURCE_SETTINGS)); }
+                        catch (Exception e) { showMessage("Open Android Settings and enable Location."); }
+                    }
+                })
+                .setNegativeButton("CLOSE", null)
+                .show();
     }
 
     // REUSABLE UI COMPONENTS
