@@ -918,63 +918,160 @@ public class DashboardActivity extends Activity {
     }
 
     private void showSettingDialog(String title, String message) {
-        new android.app.AlertDialog.Builder(this)
-                .setTitle(title)
-                .setMessage(message)
-                .setPositiveButton("GOT IT", null)
-                .show();
+        showStyledDialog(title, message, "GOT IT", null, "CLOSE", null);
+    }
+
+    private void showStyledDialog(String title, String message, String positive,
+                                  Runnable action, String negative, Runnable cancelAction) {
+        android.app.Dialog dialog = new android.app.Dialog(this);
+        LinearLayout panel = new LinearLayout(this);
+        panel.setOrientation(LinearLayout.VERTICAL);
+        panel.setPadding(dp(20), dp(18), dp(20), dp(16));
+        GradientDrawable shell = new GradientDrawable(GradientDrawable.Orientation.TL_BR,
+                new int[]{0xFF171923, 0xFF08090D, 0xFF211B10});
+        shell.setCornerRadius(dp(24));
+        shell.setStroke(dp(1), 0xFF8A713C);
+        panel.setBackground(shell);
+        TextView heading = text(title, GOLD, 19, true);
+        heading.setGravity(Gravity.CENTER);
+        panel.addView(heading, new LinearLayout.LayoutParams(-1, dp(44)));
+        View divider = new View(this);
+        divider.setBackgroundColor(0x887F6A35);
+        panel.addView(divider, new LinearLayout.LayoutParams(-1, dp(1)));
+        TextView body = text(message, WHITE, 14, false);
+        body.setLineSpacing(dp(3), 1f);
+        body.setPadding(dp(5), dp(16), dp(5), dp(20));
+        panel.addView(body);
+        LinearLayout buttons = new LinearLayout(this);
+        buttons.setGravity(Gravity.CENTER);
+        Button cancel = styledDialogButton(negative == null ? "CLOSE" : negative, false);
+        Button ok = styledDialogButton(positive, true);
+        buttons.addView(cancel, new LinearLayout.LayoutParams(0, dp(48), 1));
+        LinearLayout.LayoutParams okp = new LinearLayout.LayoutParams(0, dp(48), 1);
+        okp.leftMargin = dp(9);
+        buttons.addView(ok, okp);
+        panel.addView(buttons);
+        cancel.setOnClickListener(v -> { dialog.dismiss(); if (cancelAction != null) cancelAction.run(); });
+        ok.setOnClickListener(v -> { dialog.dismiss(); if (action != null) action.run(); });
+        dialog.setContentView(panel);
+        dialog.show();
+        if (dialog.getWindow() != null) {
+            dialog.getWindow().setBackgroundDrawableResource(android.R.color.transparent);
+            dialog.getWindow().setLayout((int)(getResources().getDisplayMetrics().widthPixels * .88), -2);
+        }
+    }
+
+    private Button styledDialogButton(String caption, boolean gold) {
+        Button button = new Button(this);
+        button.setText(caption);
+        button.setAllCaps(false);
+        button.setTextSize(12);
+        button.setTextColor(gold ? Color.BLACK : WHITE);
+        GradientDrawable shape = new GradientDrawable();
+        shape.setColor(gold ? GOLD : 0xFF292B34);
+        shape.setCornerRadius(dp(15));
+        shape.setStroke(dp(1), gold ? 0xFFD7B55B : 0x667F6A35);
+        button.setBackground(shape);
+        return button;
     }
 
     private void showUnitSettings() {
         android.content.SharedPreferences prefs = getSharedPreferences("qboix_preferences", MODE_PRIVATE);
-        String[] choices = {"Kilometres (km)", "Miles (mi)"};
-        int selected = prefs.getBoolean("use_miles", false) ? 1 : 0;
-        new android.app.AlertDialog.Builder(this)
-                .setTitle("DISTANCE UNITS")
-                .setSingleChoiceItems(choices, selected, (dialog, which) -> {
-                    prefs.edit().putBoolean("use_miles", which == 1).apply();
-                    dialog.dismiss();
-                    showMessage("Distance unit saved: " + (which == 1 ? "Miles" : "Kilometres") +
-                            ". New distance displays will use this preference where supported.");
-                })
-                .setNegativeButton("CANCEL", null)
-                .show();
+        final boolean[] miles = {prefs.getBoolean("use_miles", false)};
+        android.app.Dialog dialog = new android.app.Dialog(this);
+        LinearLayout panel = new LinearLayout(this);
+        panel.setOrientation(LinearLayout.VERTICAL);
+        panel.setPadding(dp(18), dp(16), dp(18), dp(16));
+        GradientDrawable shell = new GradientDrawable(GradientDrawable.Orientation.TL_BR,
+                new int[]{0xFF171923, 0xFF08090D, 0xFF211B10});
+        shell.setCornerRadius(dp(24));
+        shell.setStroke(dp(1), 0xFF8A713C);
+        panel.setBackground(shell);
+        TextView title = text("DISTANCE UNITS", GOLD, 19, true);
+        title.setGravity(Gravity.CENTER);
+        panel.addView(title, new LinearLayout.LayoutParams(-1, dp(44)));
+        View divider = new View(this);
+        divider.setBackgroundColor(0x887F6A35);
+        panel.addView(divider, new LinearLayout.LayoutParams(-1, dp(1)));
+        LinearLayout km = unitChoiceRow("Kilometres (km)", !miles[0]);
+        LinearLayout mi = unitChoiceRow("Miles (mi)", miles[0]);
+        panel.addView(km, new LinearLayout.LayoutParams(-1, dp(62)));
+        panel.addView(mi, new LinearLayout.LayoutParams(-1, dp(62)));
+        Runnable refresh = () -> { updateUnitChoice(km, !miles[0]); updateUnitChoice(mi, miles[0]); };
+        km.setOnClickListener(v -> { miles[0] = false; refresh.run(); });
+        mi.setOnClickListener(v -> { miles[0] = true; refresh.run(); });
+        LinearLayout buttons = new LinearLayout(this);
+        buttons.setGravity(Gravity.CENTER);
+        Button cancel = styledDialogButton("CANCEL", false);
+        Button save = styledDialogButton("SAVE", true);
+        buttons.addView(cancel, new LinearLayout.LayoutParams(0, dp(48), 1));
+        LinearLayout.LayoutParams savep = new LinearLayout.LayoutParams(0, dp(48), 1);
+        savep.leftMargin = dp(9);
+        buttons.addView(save, savep);
+        LinearLayout.LayoutParams bp = new LinearLayout.LayoutParams(-1, dp(50));
+        bp.topMargin = dp(8);
+        panel.addView(buttons, bp);
+        cancel.setOnClickListener(v -> dialog.dismiss());
+        save.setOnClickListener(v -> {
+            prefs.edit().putBoolean("use_miles", miles[0]).apply();
+            dialog.dismiss();
+            Toast.makeText(this, "Distance units saved", Toast.LENGTH_SHORT).show();
+        });
+        dialog.setContentView(panel);
+        dialog.show();
+        if (dialog.getWindow() != null) {
+            dialog.getWindow().setBackgroundDrawableResource(android.R.color.transparent);
+            dialog.getWindow().setLayout((int)(getResources().getDisplayMetrics().widthPixels * .88), -2);
+        }
     }
 
-    private void showNotificationSettings() {
-        android.content.SharedPreferences prefs = getSharedPreferences("qboix_preferences", MODE_PRIVATE);
-        boolean enabled = prefs.getBoolean("training_notifications", true);
-        new android.app.AlertDialog.Builder(this)
-                .setTitle("TRAINING NOTIFICATIONS")
-                .setMessage("Training reminders preference: " + (enabled ? "ON" : "OFF") +
-                        "\\n\\nUse the switch to save your preference. Android may also control notifications in system settings.")
-                .setPositiveButton(enabled ? "TURN OFF" : "TURN ON", (dialog, which) -> {
-                    prefs.edit().putBoolean("training_notifications", !enabled).apply();
-                    showMessage("Training reminders preference saved.");
-                })
-                .setNegativeButton("CLOSE", null)
-                .show();
+    private LinearLayout unitChoiceRow(String caption, boolean selected) {
+        LinearLayout row = new LinearLayout(this);
+        row.setGravity(Gravity.CENTER_VERTICAL);
+        row.setPadding(dp(8), 0, dp(8), 0);
+        TextView label = text(caption, WHITE, 17, false);
+        row.addView(label, new LinearLayout.LayoutParams(0, -2, 1));
+        TextView indicator = text(selected ? "✓" : "", Color.BLACK, 17, true);
+        indicator.setGravity(Gravity.CENTER);
+        GradientDrawable circle = new GradientDrawable();
+        circle.setShape(GradientDrawable.OVAL);
+        circle.setColor(selected ? GREEN : Color.TRANSPARENT);
+        circle.setStroke(dp(2), selected ? GOLD : GREY);
+        indicator.setBackground(circle);
+        row.addView(indicator, new LinearLayout.LayoutParams(dp(30), dp(30)));
+        return row;
+    }
+
+    private void updateUnitChoice(LinearLayout row, boolean selected) {
+        TextView indicator = (TextView) row.getChildAt(1);
+        indicator.setText(selected ? "✓" : "");
+        GradientDrawable circle = new GradientDrawable();
+        circle.setShape(GradientDrawable.OVAL);
+        circle.setColor(selected ? GREEN : Color.TRANSPARENT);
+        circle.setStroke(dp(2), selected ? GOLD : GREY);
+        indicator.setBackground(circle);
     }
 
     private void showGpsSettings() {
         boolean fine = android.os.Build.VERSION.SDK_INT < 23 ||
                 checkSelfPermission(android.Manifest.permission.ACCESS_FINE_LOCATION) ==
                         android.content.pm.PackageManager.PERMISSION_GRANTED;
-        new android.app.AlertDialog.Builder(this)
-                .setTitle("GPS SETTINGS")
-                .setMessage("Precise location permission: " + (fine ? "GRANTED" : "NOT GRANTED") +
-                        "\\n\\nGPS recording needs location permission and the phone's Location setting switched on.")
-                .setPositiveButton(fine ? "OPEN LOCATION SETTINGS" : "GRANT LOCATION", (dialog, which) -> {
+        String message = "Precise location permission: " + (fine ? "GRANTED" : "NOT GRANTED") +
+                "\n\nGPS recording needs location permission and the phone's Location setting switched on.";
+        showStyledDialog("GPS SETTINGS", message,
+                fine ? "OPEN LOCATION SETTINGS" : "GRANT LOCATION", () -> {
                     if (!fine && android.os.Build.VERSION.SDK_INT >= 23) {
                         requestPermissions(new String[]{android.Manifest.permission.ACCESS_FINE_LOCATION,
                                 android.Manifest.permission.ACCESS_COARSE_LOCATION}, 77);
                     } else {
-                        try { startActivity(new Intent(android.provider.Settings.ACTION_LOCATION_SOURCE_SETTINGS)); }
-                        catch (Exception e) { showMessage("Open Android Settings and enable Location."); }
+                        try {
+                            startActivity(new Intent(android.provider.Settings.ACTION_LOCATION_SOURCE_SETTINGS));
+                        } catch (Exception e) {
+                            showStyledDialog("LOCATION", "Open Android Settings and enable Location.",
+                                    "GOT IT", null, "CLOSE", null);
+                        }
                     }
-                })
-                .setNegativeButton("CLOSE", null)
-                .show();
+                }, "CLOSE", null);
     }
 
     // REUSABLE UI COMPONENTS
