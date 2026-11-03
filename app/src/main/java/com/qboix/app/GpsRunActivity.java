@@ -264,26 +264,33 @@ public class GpsRunActivity extends Activity {
     }
 
     private LinearLayout buildSettings(){
-        LinearLayout box=new LinearLayout(this);box.setOrientation(LinearLayout.VERTICAL);box.setPadding(dp(18),dp(15),dp(18),dp(18));Bitmap settingsBitmap=BitmapFactory.decodeResource(getResources(),R.drawable.workout_settings_bg);
-        BitmapDrawable settingsPhoto=new BitmapDrawable(getResources(),settingsBitmap);
-        settingsPhoto.setGravity(Gravity.FILL);
-        GradientDrawable darkOverlay=new GradientDrawable();
-        darkOverlay.setColor(0xB809090D);
-        darkOverlay.setCornerRadius(dp(26));
-        LayerDrawable settingsBackground=new LayerDrawable(new android.graphics.drawable.Drawable[]{settingsPhoto,darkOverlay});
+        LinearLayout box=new LinearLayout(this);box.setOrientation(LinearLayout.VERTICAL);box.setPadding(dp(18),dp(15),dp(18),dp(18));GradientDrawable settingsBackground=new GradientDrawable();
+        settingsBackground.setColor(0xF20B0D12);
+        settingsBackground.setCornerRadius(dp(28));
+        settingsBackground.setStroke(dp(1),0x887F6A35);
         box.setBackground(settingsBackground);
         box.setClipToOutline(true);
         box.setElevation(dp(12));
         TextView title=label("WORKOUT SETTINGS",Color.WHITE,17,true);
         title.setPaintFlags(title.getPaintFlags()|Paint.UNDERLINE_TEXT_FLAG);
         box.addView(title);
-        modeChoice=new Spinner(this);modeChoice.setAdapter(new ArrayAdapter<>(this,android.R.layout.simple_spinner_dropdown_item,new String[]{"Road / distance","Track workout","Cross-country"}));
-        if ("TRACK & FIELD".equals(activityType)) modeChoice.setSelection(1);
-        else if ("CROSS-COUNTRY".equals(activityType)) modeChoice.setSelection(2);
+        boolean trackAndField="TRACK & FIELD".equals(activityType);
+        String[] workoutModes=trackAndField
+                ? new String[]{"Road / distance","Track workout","Cross-country"}
+                : new String[]{"Road / distance","Cross-country"};
+        modeChoice=new Spinner(this);
+        modeChoice.setAdapter(new ArrayAdapter<>(this,android.R.layout.simple_spinner_dropdown_item,workoutModes));
+        if ("CROSS-COUNTRY".equals(activityType)) modeChoice.setSelection(trackAndField?2:1);
         else modeChoice.setSelection(0);
         addSetting(box,"WORKOUT MODE",modeChoice);
-        trackLengthChoice=new Spinner(this);trackLengthChoice.setAdapter(new ArrayAdapter<>(this,android.R.layout.simple_spinner_dropdown_item,new String[]{"100 m","200 m","300 m","400 m","Custom track"}));addSetting(box,"TRACK LENGTH",trackLengthChoice);
-        lapAlertChoice=new Spinner(this);lapAlertChoice.setAdapter(new ArrayAdapter<>(this,android.R.layout.simple_spinner_dropdown_item,new String[]{"Every lap","Every 2 laps","Every 3 laps","Every 4 laps","Every 5 laps","Every 8 laps","Every 9 laps"}));addSetting(box,"LAP VOICE ALERT FREQUENCY",lapAlertChoice);
+        if(trackAndField){
+            trackLengthChoice=new Spinner(this);
+            trackLengthChoice.setAdapter(new ArrayAdapter<>(this,android.R.layout.simple_spinner_dropdown_item,new String[]{"100 m","200 m","300 m","400 m","Custom track"}));
+            addSetting(box,"TRACK LENGTH",trackLengthChoice);
+            lapAlertChoice=new Spinner(this);
+            lapAlertChoice.setAdapter(new ArrayAdapter<>(this,android.R.layout.simple_spinner_dropdown_item,new String[]{"Every lap","Every 2 laps","Every 3 laps","Every 4 laps","Every 5 laps","Every 8 laps","Every 9 laps"}));
+            addSetting(box,"LAP VOICE ALERT FREQUENCY",lapAlertChoice);
+        }
         intervalChoice=new Spinner(this);intervalChoice.setAdapter(new ArrayAdapter<>(this,android.R.layout.simple_spinner_dropdown_item,new String[]{"100 m","200 m","400 m","500 m","1 km","Half mile","1 mile","Custom metres"}));intervalChoice.setSelection(4);addSetting(box,"VOICE ALERT DISTANCE",intervalChoice);
         customMetres=new EditText(this);
         customMetres.setSingleLine(true);
@@ -299,7 +306,7 @@ public class GpsRunActivity extends Activity {
         box.addView(customMetres,new LinearLayout.LayoutParams(-1,dp(48)));
         voiceSwitch=new Switch(this);voiceSwitch.setText("Voice assistant");voiceSwitch.setTextColor(Color.WHITE);voiceSwitch.setChecked(true);box.addView(voiceSwitch);
         alertsSwitch=new Switch(this);alertsSwitch.setText("Distance voice alerts");alertsSwitch.setTextColor(Color.WHITE);alertsSwitch.setChecked(true);box.addView(alertsSwitch);
-        Button testVoice=new Button(this);testVoice.setText("TEST VOICE");testVoice.setAllCaps(false);testVoice.setOnClickListener(v->{if(voicePreviewReady&&voicePreview!=null)voicePreview.speak("Q BOIX voice assistant is ready. Distance one kilometre. Time five minutes. Pace five minutes per kilometre.",TextToSpeech.QUEUE_FLUSH,null,"qboix_voice_test");else Toast.makeText(this,"Voice engine is still starting. Try again in a moment.",Toast.LENGTH_SHORT).show();});box.addView(testVoice,new LinearLayout.LayoutParams(-1,dp(44)));
+        
          TextView note=label("Voice uses your phone language and a clear, slightly slower speaking speed. Settings apply when the next activity starts.",GREY,10,false);box.addView(note);
         return box;
     }
@@ -387,7 +394,7 @@ public class GpsRunActivity extends Activity {
     private double selectedInterval(){int pos=intervalChoice.getSelectedItemPosition();if(pos==7){try{double n=Double.parseDouble(customMetres.getText().toString());if(n>=50&&n<=100000)return n;}catch(Exception ignored){}Toast.makeText(this,"Enter a distance from 50 to 100000 metres.",Toast.LENGTH_LONG).show();return -1;}return intervals[pos];}
     private double selectedTrack(){int p=trackLengthChoice.getSelectedItemPosition();if(p<4)return new double[]{100,200,300,400}[p];try{return Double.parseDouble(customMetres.getText().toString());}catch(Exception e){return 400;}}
     private void command(String action){command(action,1000);}
-    private void command(String action,double interval){Intent i=new Intent(this,GpsTrackingService.class);i.setAction(action);if(GpsTrackingService.START.equals(action)){i.putExtra(GpsTrackingService.EXTRA_INTERVAL,interval);i.putExtra(GpsTrackingService.EXTRA_ACTIVITY_TYPE,activityType);i.putExtra(GpsTrackingService.EXTRA_TRACK_MODE,modeChoice.getSelectedItemPosition()==1 || "TRACK & FIELD".equals(activityType));i.putExtra(GpsTrackingService.EXTRA_TRACK_LENGTH,selectedTrack());i.putExtra(GpsTrackingService.EXTRA_LAP_ALERT_EVERY,new int[]{1,2,3,4,5,8,9}[lapAlertChoice.getSelectedItemPosition()]);i.putExtra(GpsTrackingService.EXTRA_VOICE_ENABLED,voiceSwitch.isChecked());i.putExtra(GpsTrackingService.EXTRA_ALERTS_ENABLED,alertsSwitch.isChecked());}if(Build.VERSION.SDK_INT>=26)startForegroundService(i);else startService(i);}
+    private void command(String action,double interval){Intent i=new Intent(this,GpsTrackingService.class);i.setAction(action);if(GpsTrackingService.START.equals(action)){i.putExtra(GpsTrackingService.EXTRA_INTERVAL,interval);i.putExtra(GpsTrackingService.EXTRA_ACTIVITY_TYPE,activityType);i.putExtra(GpsTrackingService.EXTRA_TRACK_MODE,"TRACK & FIELD".equals(activityType) && modeChoice.getSelectedItemPosition()==1);i.putExtra(GpsTrackingService.EXTRA_TRACK_LENGTH,"TRACK & FIELD".equals(activityType)?selectedTrack():400);if("TRACK & FIELD".equals(activityType))i.putExtra(GpsTrackingService.EXTRA_LAP_ALERT_EVERY,new int[]{1,2,3,4,5,8,9}[lapAlertChoice.getSelectedItemPosition()]);i.putExtra(GpsTrackingService.EXTRA_VOICE_ENABLED,voiceSwitch.isChecked());i.putExtra(GpsTrackingService.EXTRA_ALERTS_ENABLED,alertsSwitch.isChecked());}if(Build.VERSION.SDK_INT>=26)startForegroundService(i);else startService(i);}
     @Override protected void onStart(){super.onStart();IntentFilter f=new IntentFilter(GpsTrackingService.ACTION);if(Build.VERSION.SDK_INT>=33)registerReceiver(receiver,f,Context.RECEIVER_NOT_EXPORTED);else registerReceiver(receiver,f);registered=true;}
     @Override protected void onStop(){
         if(registered){unregisterReceiver(receiver);registered=false;}
