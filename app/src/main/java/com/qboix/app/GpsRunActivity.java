@@ -364,8 +364,6 @@ public class GpsRunActivity extends Activity {
     private void requestStart(){double interval=selectedInterval();if(interval<0)return;if(checkSelfPermission(Manifest.permission.ACCESS_FINE_LOCATION)!=PackageManager.PERMISSION_GRANTED){requestPermissions(new String[]{Manifest.permission.ACCESS_FINE_LOCATION},41);return;}command(GpsTrackingService.START,interval);}
     @Override public void onRequestPermissionsResult(int r,String[] p,int[] g){
         super.onRequestPermissionsResult(r,p,g);
-        boolean granted=false;
-        for(int result:g) if(result==PackageManager.PERMISSION_GRANTED) granted=true;
         if(r==40){
             if(checkSelfPermission(Manifest.permission.ACCESS_FINE_LOCATION)==PackageManager.PERMISSION_GRANTED) {
                 startPreviewLocationUpdates();
