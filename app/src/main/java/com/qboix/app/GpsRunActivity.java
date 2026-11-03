@@ -361,7 +361,7 @@ public class GpsRunActivity extends Activity {
         if("CUSTOM".equals(activityType))return "CUSTOM GPS WORKOUT";
         return activityType+" GPS";
     }
-    private void requestStart(){double interval=selectedInterval();if(interval<0)return;if(checkSelfPermission(Manifest.permission.ACCESS_FINE_LOCATION)!=PackageManager.PERMISSION_GRANTED){requestPermissions(new String[]{Manifest.permission.ACCESS_FINE_LOCATION,Manifest.permission.ACCESS_COARSE_LOCATION},41);return;}command(GpsTrackingService.START,interval);}
+    private void requestStart(){double interval=selectedInterval();if(interval<0)return;if(checkSelfPermission(Manifest.permission.ACCESS_FINE_LOCATION)!=PackageManager.PERMISSION_GRANTED){requestPermissions(new String[]{Manifest.permission.ACCESS_FINE_LOCATION},41);return;}command(GpsTrackingService.START,interval);}
     @Override public void onRequestPermissionsResult(int r,String[] p,int[] g){
         super.onRequestPermissionsResult(r,p,g);
         boolean granted=false;
@@ -373,8 +373,11 @@ public class GpsRunActivity extends Activity {
                 status.setText("Precise location permission denied • GPS unavailable");
             }
         } else if(r==41){
-            if(granted) command(GpsTrackingService.START,selectedInterval());
-            else status.setText("Location permission is required to record.");
+            if(checkSelfPermission(Manifest.permission.ACCESS_FINE_LOCATION)==PackageManager.PERMISSION_GRANTED) {
+                command(GpsTrackingService.START,selectedInterval());
+            } else {
+                status.setText("Precise GPS permission is required to record.");
+            }
         }
     }
     private double selectedInterval(){int pos=intervalChoice.getSelectedItemPosition();if(pos==7){try{double n=Double.parseDouble(customMetres.getText().toString());if(n>=50&&n<=100000)return n;}catch(Exception ignored){}Toast.makeText(this,"Enter a distance from 50 to 100000 metres.",Toast.LENGTH_LONG).show();return -1;}return intervals[pos];}
