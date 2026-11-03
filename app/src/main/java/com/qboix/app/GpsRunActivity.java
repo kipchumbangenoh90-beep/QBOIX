@@ -292,7 +292,7 @@ public class GpsRunActivity extends Activity {
                 new String[]{"100 m","200 m","400 m","500 m","1 km","Half mile","1 mile","Custom metres"}));
         intervalChoice.setSelection(4);
         intervalChoice.setVisibility(View.GONE);
-        TextView intervalDisplay=label("Every 1 km     ▾",WHITE,17,true);
+        TextView intervalDisplay=label("Every 1 km     ▾",Color.WHITE,17,true);
         intervalDisplay.setPadding(dp(10),dp(10),dp(10),dp(10));
         intervalDisplay.setBackground(panel(0x332F80D8,12));
         box.addView(intervalDisplay,new LinearLayout.LayoutParams(-1,dp(48)));
