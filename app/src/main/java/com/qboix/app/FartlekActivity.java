@@ -3,6 +3,9 @@ package com.qboix.app;
 import android.app.Activity;
 import android.Manifest;
 import android.content.Intent;
+import android.media.AudioAttributes;
+import android.media.AudioFocusRequest;
+import android.media.AudioManager;
 import android.content.pm.PackageManager;
 import android.os.Build;
 import android.app.AlertDialog;
@@ -14,6 +17,7 @@ import android.os.Build;
 import android.os.VibrationEffect;
 import android.os.Vibrator;
 import android.speech.tts.TextToSpeech;
+import android.speech.tts.UtteranceProgressListener;
 import android.widget.CheckBox;
 import android.os.Handler;
 import android.os.Looper;
@@ -37,6 +41,9 @@ import android.widget.Toast;
 
 public class FartlekActivity extends Activity {
     private TextToSpeech speech;
+    private AudioManager audioManager;
+    private AudioFocusRequest audioFocusRequest;
+    private boolean audioFocusHeld = false;
     private boolean speechReady = false;
     private boolean voiceEnabled = true;
     private boolean vibrationEnabled = true;
@@ -108,7 +115,13 @@ public class FartlekActivity extends Activity {
         vibrator = (Vibrator) getSystemService(VIBRATOR_SERVICE);
         speech = new TextToSpeech(this, status -> {
             speechReady = status == TextToSpeech.SUCCESS;
-            if (speechReady) { int language=speech.setLanguage(java.util.Locale.getDefault()); if(language==TextToSpeech.LANG_MISSING_DATA||language==TextToSpeech.LANG_NOT_SUPPORTED)speech.setLanguage(java.util.Locale.US); speech.setSpeechRate(0.95f); }
+            if (speechReady) { int language=speech.setLanguage(java.util.Locale.getDefault()); if(language==TextToSpeech.LANG_MISSING_DATA||language==TextToSpeech.LANG_NOT_SUPPORTED)speech.setLanguage(java.util.Locale.US); speech.setSpeechRate(0.95f); speech.setOnUtteranceProgressListener(new UtteranceProgressListener() {
+                private void releaseWhenFinished() { handler.postDelayed(() -> { if (speech == null || !speech.isSpeaking()) releaseSpeechAudioFocus(); }, 250); }
+                @Override public void onStart(String id) {}
+                @Override public void onDone(String id) { releaseWhenFinished(); }
+                @Override public void onError(String id) { releaseWhenFinished(); }
+                @Override public void onStop(String id, boolean interrupted) { releaseWhenFinished(); }
+            }); }
         });
         buildScreen();
     }
