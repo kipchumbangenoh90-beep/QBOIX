@@ -66,7 +66,7 @@ public class GpsRunActivity extends Activity {
             int sec=i.getIntExtra("seconds",0);
             active=i.getBooleanExtra("active",active); paused=i.getBooleanExtra("paused",paused);
             distance.setText(String.format(Locale.getDefault(),"%.2f",metres/1000));
-            time.setText(clock(sec)); pace.setText(p>0?clock((int)p):"--:--");
+            time.setText(clock(sec)); pace.setText(p>0?paceFormat(p):"--\u0027--\u0022");
             speed.setText(p>0?String.format(Locale.getDefault(),"%.1f",3600.0/p):"0.0");
             calories.setText(String.format(Locale.getDefault(),"%.0f",metres/1000.0*60.0));
             int laps=i.getIntExtra("lap_count",-1); if(laps>=0)lapStatus.setText("LAPS  "+laps);
@@ -447,7 +447,7 @@ public class GpsRunActivity extends Activity {
     private TextView label(String s,int c,float size,boolean bold){TextView t=new TextView(this);t.setText(s);t.setTextColor(c);t.setTextSize(size);if(bold)t.setTypeface(null,1);return t;}
     private GradientDrawable panel(int c,int r){GradientDrawable d=new GradientDrawable();d.setColor(c);d.setCornerRadius(dp(r));return d;}
     private int dp(float n){return (int)(n*getResources().getDisplayMetrics().density+.5f);}
-    private String clock(int s){return String.format(Locale.getDefault(),"%02d:%02d",s/60,s%60);}
+    private String clock(int s){return String.format(Locale.getDefault(),"%02d:%02d",s/60,s%60);} private String paceFormat(double p){if(!Double.isFinite(p)||p<=0)return "--\u0027--\u0022";int s=(int)Math.round(p);return String.format(Locale.US,"%d\u0027%02d\u0022/km",s/60,s%60);}
 
     private class RouteCanvas extends View{
         private JSONArray route=new JSONArray();private final Paint line=new Paint(3),dot=new Paint(3);
