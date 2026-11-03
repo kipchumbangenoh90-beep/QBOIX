@@ -17,8 +17,8 @@ android {
         applicationId 'com.qboix.app'
         minSdk 26
         targetSdk 34
-        versionCode (project.findProperty('qboixVersionCode') ?: '1').toString().toInteger()
-        versionName (project.findProperty('qboixVersionName') ?: '0.1').toString()
+        versionCode providers.gradleProperty('qboixVersionCode').getOrElse('1').toInteger()
+        versionName providers.gradleProperty('qboixVersionName').getOrElse('0.1').get()
     }
 
     signingConfigs {
