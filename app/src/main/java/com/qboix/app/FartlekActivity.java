@@ -115,9 +115,9 @@ public class FartlekActivity extends Activity {
         vibrator = (Vibrator) getSystemService(VIBRATOR_SERVICE);
         audioManager = (AudioManager) getSystemService(AUDIO_SERVICE);
         if (Build.VERSION.SDK_INT >= 26) {
-            audioFocusRequest = new AudioFocusRequest.Builder(AudioManager.AUDIOFOCUS_GAIN_TRANSIENT_MAY_DUCK)
+            audioFocusRequest = new AudioFocusRequest.Builder(AudioManager.AUDIOFOCUS_GAIN_TRANSIENT)
                 .setAudioAttributes(new AudioAttributes.Builder().setUsage(AudioAttributes.USAGE_ASSISTANCE_ACCESSIBILITY)
-                .setContentType(AudioAttributes.CONTENT_TYPE_SPEECH).build()).setWillPauseWhenDucked(false).build();
+                .setContentType(AudioAttributes.CONTENT_TYPE_SPEECH).build()).build();
         }
         speech = new TextToSpeech(this, status -> {
             speechReady = status == TextToSpeech.SUCCESS;
@@ -348,10 +348,10 @@ public class FartlekActivity extends Activity {
     private void announceSprintSummary(){double metres=Math.max(0,gpsDistance-sprintStartDistance);int seconds=Math.max(0,gpsElapsed-sprintStartElapsed);double pace=metres>=20?seconds/(metres/1000.0):0;int p=(int)Math.round(pace);String paceText=pace>0?(p/60)+" minutes "+(p%60)+" seconds per kilometre":"pace unavailable";announce("Sprint complete. You ran "+String.format(java.util.Locale.US,"%.0f",metres)+" metres in "+(seconds/60)+" minutes "+(seconds%60)+" seconds. Sprint pace "+paceText+". Cooldown now.");}
 
     private boolean requestSpeechAudioFocus() {
-        if (audioManager == null) return false;
+        if (audioManager == null || audioManager.getMode() == AudioManager.MODE_IN_CALL || audioManager.getMode() == AudioManager.MODE_IN_COMMUNICATION) return false;
         int result = Build.VERSION.SDK_INT >= 26 && audioFocusRequest != null
             ? audioManager.requestAudioFocus(audioFocusRequest)
-            : audioManager.requestAudioFocus(null, AudioManager.STREAM_MUSIC, AudioManager.AUDIOFOCUS_GAIN_TRANSIENT_MAY_DUCK);
+            : audioManager.requestAudioFocus(null, AudioManager.STREAM_MUSIC, AudioManager.AUDIOFOCUS_GAIN_TRANSIENT);
         audioFocusHeld = result == AudioManager.AUDIOFOCUS_REQUEST_GRANTED;
         return audioFocusHeld;
     }
