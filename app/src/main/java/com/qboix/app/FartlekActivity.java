@@ -113,6 +113,12 @@ public class FartlekActivity extends Activity {
         voiceEnabled = getPreferences(MODE_PRIVATE).getBoolean("voice_enabled", true);
         vibrationEnabled = getPreferences(MODE_PRIVATE).getBoolean("vibration_enabled", true);
         vibrator = (Vibrator) getSystemService(VIBRATOR_SERVICE);
+        audioManager = (AudioManager) getSystemService(AUDIO_SERVICE);
+        if (Build.VERSION.SDK_INT >= 26) {
+            audioFocusRequest = new AudioFocusRequest.Builder(AudioManager.AUDIOFOCUS_GAIN_TRANSIENT_MAY_DUCK)
+                .setAudioAttributes(new AudioAttributes.Builder().setUsage(AudioAttributes.USAGE_ASSISTANCE_ACCESSIBILITY)
+                .setContentType(AudioAttributes.CONTENT_TYPE_SPEECH).build()).setWillPauseWhenDucked(false).build();
+        }
         speech = new TextToSpeech(this, status -> {
             speechReady = status == TextToSpeech.SUCCESS;
             if (speechReady) { int language=speech.setLanguage(java.util.Locale.getDefault()); if(language==TextToSpeech.LANG_MISSING_DATA||language==TextToSpeech.LANG_NOT_SUPPORTED)speech.setLanguage(java.util.Locale.US); speech.setSpeechRate(0.95f); speech.setOnUtteranceProgressListener(new UtteranceProgressListener() {
@@ -341,9 +347,24 @@ public class FartlekActivity extends Activity {
 
     private void announceSprintSummary(){double metres=Math.max(0,gpsDistance-sprintStartDistance);int seconds=Math.max(0,gpsElapsed-sprintStartElapsed);double pace=metres>=20?seconds/(metres/1000.0):0;int p=(int)Math.round(pace);String paceText=pace>0?(p/60)+" minutes "+(p%60)+" seconds per kilometre":"pace unavailable";announce("Sprint complete. You ran "+String.format(java.util.Locale.US,"%.0f",metres)+" metres in "+(seconds/60)+" minutes "+(seconds%60)+" seconds. Sprint pace "+paceText+". Cooldown now.");}
 
+    private boolean requestSpeechAudioFocus() {
+        if (audioManager == null) return false;
+        int result = Build.VERSION.SDK_INT >= 26 && audioFocusRequest != null
+            ? audioManager.requestAudioFocus(audioFocusRequest)
+            : audioManager.requestAudioFocus(null, AudioManager.STREAM_MUSIC, AudioManager.AUDIOFOCUS_GAIN_TRANSIENT_MAY_DUCK);
+        audioFocusHeld = result == AudioManager.AUDIOFOCUS_REQUEST_GRANTED;
+        return audioFocusHeld;
+    }
+    private void releaseSpeechAudioFocus() {
+        if (!audioFocusHeld || audioManager == null) return;
+        if (Build.VERSION.SDK_INT >= 26 && audioFocusRequest != null) audioManager.abandonAudioFocusRequest(audioFocusRequest);
+        else audioManager.abandonAudioFocus(null);
+        audioFocusHeld = false;
+    }
     private void announce(String words) {
         if (voiceEnabled && speech != null && speechReady) {
-            speech.speak(words, TextToSpeech.QUEUE_FLUSH, null, "qboix_fartlek_voice");
+            requestSpeechAudioFocus();
+            speech.speak(words, TextToSpeech.QUEUE_ADD, null, "qboix_fartlek_" + SystemClock.elapsedRealtime());
         }
     }
 
@@ -408,6 +429,7 @@ public class FartlekActivity extends Activity {
             speech.stop();
             speech.shutdown();
         }
+        releaseSpeechAudioFocus();
         super.onDestroy();
     }
 }
