@@ -13,6 +13,8 @@ import android.os.Looper;
 import android.view.Gravity;
 import android.view.View;
 import android.widget.LinearLayout;
+import android.widget.Button;
+import android.widget.Toast;
 import android.widget.ScrollView;
 import android.widget.TextView;
 import org.json.JSONArray;
