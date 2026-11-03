@@ -28,7 +28,7 @@ Copy the output into `QBOIX_KEYSTORE_BASE64`. Keep the original keystore and pas
 
 ## Publishing updates
 
-After all four secrets are configured, every push to `main` starts **Q-BOIX Android Release**. GitHub Actions builds a signed APK, calculates its SHA-256 hash, and publishes a release containing the APK and update metadata. The Settings update button then finds that release.
+After all four secrets are configured, every push to `main` starts **Q-BOIX Android Release**. GitHub Actions builds a signed APK, calculates its SHA-256 hash, and publishes a release containing the APK and update metadata. The Settings update button then finds that release. For the first publication after adding secrets, open the repository's **Actions → Q-BOIX Android Release → Run workflow** and run it once; later pushes to `main` publish automatically.
 
 The release workflow intentionally fails when signing secrets are missing; it must not publish an unsigned or differently signed APK.
 
