@@ -346,8 +346,7 @@ public class DashboardActivity extends Activity {
         watchOxygenValue.setText(oxygen < 0 ? "—" : String.valueOf(oxygen));
         watchStepsValue.setText(steps < 0 ? "—" : String.valueOf(steps));
         watchCaloriesValue.setText(calories < 0 ? "—" : String.valueOf(calories));
-        boolean watchConnected = Qx11KeepAliveService.hasActiveConnection(this);
-        if (!watchConnected && WatchDataStore.isConnected(this)) WatchDataStore.setConnected(this, false);
+        boolean watchConnected = WatchDataStore.isConnected(this);
         if (watchConnectionLabel != null) {
             watchConnectionLabel.setText(watchConnected
                     ? "QX11 CONNECTED  •  LIVE WATCH"
@@ -878,7 +877,9 @@ public class DashboardActivity extends Activity {
                 "CONNECTED APPS & HEALTH DATA",
                 "Connect Q-BOIX with Health Connect and manage fitness data permissions for compatible apps.",
                 BLUE,
-                () -> startActivity(new Intent(DashboardActivity.this, HealthConnectActivity.class))
+                () -> showStyledDialog("CONNECTED APPS & HEALTH DATA",
+                        "Health Connect support is not active in this build yet. Q-BOIX continues to store its own workouts and GPS routes on this device.",
+                        "OK", null, "CLOSE", null)
         );
 
         addActionCard("APP CATEGORY",
